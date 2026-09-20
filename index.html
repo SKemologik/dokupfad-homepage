@@ -522,6 +522,83 @@
     color: hsl(var(--primary-deep));
   }
 
+  /* ---------- Umrechner ---------- */
+
+  .calc-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 20px;
+  }
+
+  .calc-card {
+    background: hsl(var(--surface));
+    border: 1px solid hsl(var(--border));
+    border-radius: 0.9rem;
+    padding: 26px;
+  }
+
+  .calc-card h3 { font-size: 1.02rem; margin-bottom: 18px; }
+
+  .calc-row { display: flex; gap: 14px; flex-wrap: wrap; }
+
+  .calc-row label {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    font-size: 0.82rem;
+    color: hsl(var(--fg-muted));
+    flex: 1;
+    min-width: 120px;
+  }
+
+  .calc-row input {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 1rem;
+    padding: 10px 12px;
+    border-radius: 0.6rem;
+    border: 1px solid hsl(var(--border));
+    background: hsl(var(--bg));
+    color: hsl(var(--fg));
+  }
+
+  .calc-row input:focus {
+    outline: 2px solid hsl(var(--primary) / 0.4);
+    outline-offset: 1px;
+  }
+
+  .calc-result {
+    margin-top: 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .calc-result-line {
+    font-family: 'Outfit', sans-serif;
+    font-weight: 600;
+    font-size: 1.1rem;
+    color: hsl(var(--primary-deep));
+  }
+
+  .calc-result-label {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-weight: 500;
+    font-size: 0.82rem;
+    color: hsl(var(--fg-muted));
+    display: block;
+    margin-bottom: 2px;
+  }
+
+  .calc-note {
+    margin-top: 20px;
+    font-size: 0.8rem;
+    color: hsl(var(--fg-muted));
+  }
+
+  @media (max-width: 640px) {
+    .calc-grid { grid-template-columns: 1fr; }
+  }
+
   /* ---------- CTA ---------- */
 
   .cta-section { text-align: center; }
@@ -655,6 +732,7 @@
     <nav class="nav-links" id="navLinks">
       <a href="#bausteine">Bausteine</a>
       <a href="#fuer-wen">Für wen</a>
+      <a href="#umrechner">Umrechner</a>
       <a href="#kontakt">Kontakt</a>
       <a class="btn btn-primary" href="https://dokupfad.app">Zur App</a>
     </nav>
@@ -811,6 +889,47 @@
     </div>
   </section>
 
+  <section class="section-alt" id="umrechner">
+    <div class="wrap">
+      <div class="section-head">
+        <span class="eyebrow">Praktisches Werkzeug</span>
+        <h2>Zeitstunden ↔ Unterrichtseinheiten umrechnen</h2>
+      </div>
+      <div class="calc-grid">
+        <div class="calc-card">
+          <h3>Uhrzeit-Spanne → Zeitstunden &amp; Unterrichtseinheiten</h3>
+          <div class="calc-row">
+            <label>
+              <span>Von</span>
+              <input type="time" id="calcFrom" value="08:40">
+            </label>
+            <label>
+              <span>Bis</span>
+              <input type="time" id="calcTo" value="11:20">
+            </label>
+          </div>
+          <div class="calc-result">
+            <div class="calc-result-line"><span class="calc-result-label">Zeit:</span> <span id="calcResultTime"></span></div>
+            <div class="calc-result-line"><span class="calc-result-label">Unterrichtseinheiten (à 45 Min.):</span> <span id="calcResultUe"></span></div>
+          </div>
+        </div>
+        <div class="calc-card">
+          <h3>Unterrichtseinheiten → Zeitstunden</h3>
+          <div class="calc-row">
+            <label>
+              <span>Unterrichtseinheiten (à 45 Min.)</span>
+              <input type="number" id="calcUe" min="0" step="0.25" value="1" inputmode="decimal">
+            </label>
+          </div>
+          <div class="calc-result">
+            <div class="calc-result-line"><span class="calc-result-label">Zeit:</span> <span id="calcResultHours"></span></div>
+          </div>
+        </div>
+      </div>
+      <p class="calc-note">Reine Rechenhilfe, keine offizielle Abrechnungsgrundlage — bitte die Vorgaben eures Kostenträgers beachten.</p>
+    </div>
+  </section>
+
   <section class="cta-section">
     <div class="wrap">
       <h2>Bereit, den nächsten Nachweis zu erfassen?</h2>
@@ -889,6 +1008,61 @@
       toggle.setAttribute('aria-expanded', 'false');
     });
   });
+
+  // Umrechner: Uhrzeit-Spanne -> Zeitstunden & Unterrichtseinheiten (45 Min.)
+  var calcFrom = document.getElementById('calcFrom');
+  var calcTo = document.getElementById('calcTo');
+  var calcResultTime = document.getElementById('calcResultTime');
+  var calcResultUe = document.getElementById('calcResultUe');
+  var calcUe = document.getElementById('calcUe');
+  var calcResultHours = document.getElementById('calcResultHours');
+
+  function formatDe(n, decimals) {
+    return n.toFixed(decimals).replace('.', ',');
+  }
+
+  function parseTimeToMinutes(value) {
+    if (!value) return null;
+    var parts = value.split(':');
+    var h = parseInt(parts[0], 10);
+    var m = parseInt(parts[1], 10);
+    if (isNaN(h) || isNaN(m)) return null;
+    return h * 60 + m;
+  }
+
+  function updateUeResult() {
+    var fromMin = parseTimeToMinutes(calcFrom.value);
+    var toMin = parseTimeToMinutes(calcTo.value);
+    if (fromMin === null || toMin === null) {
+      calcResultTime.textContent = '';
+      calcResultUe.textContent = '';
+      return;
+    }
+    var diffMin = toMin - fromMin;
+    if (diffMin < 0) diffMin += 24 * 60; // Spanne über Mitternacht hinweg
+    var h = Math.floor(diffMin / 60);
+    var m = diffMin % 60;
+    var ue = diffMin / 45;
+    calcResultTime.textContent = h + ' Std., ' + m + ' Min.';
+    calcResultUe.textContent = formatDe(ue, 2);
+  }
+
+  function updateHoursResult() {
+    var ue = parseFloat(calcUe.value) || 0;
+    var decimalHours = ue * (45 / 60);
+    var h = Math.floor(decimalHours);
+    var m = Math.round((decimalHours - h) * 60);
+    if (m === 60) { h += 1; m = 0; }
+    calcResultHours.textContent = h + ' Std., ' + m + ' Min.';
+  }
+
+  if (calcFrom && calcTo && calcUe) {
+    calcFrom.addEventListener('input', updateUeResult);
+    calcTo.addEventListener('input', updateUeResult);
+    calcUe.addEventListener('input', updateHoursResult);
+    updateUeResult();
+    updateHoursResult();
+  }
 </script>
 </body>
 </html>
