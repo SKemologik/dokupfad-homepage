@@ -1,0 +1,2304 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Genogramm-Atelier – Genogramm-Editor von DokuPfad</title>
+<meta name="description" content="Interaktiver Editor für klinische Genogramme nach McGoldrick/Gerson/Petry — Familienstruktur und Beziehungsqualität in einem Bild. Läuft komplett lokal im Browser, ohne Server.">
+<meta name="theme-color" content="#16a34a">
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="DokuPfad">
+<meta property="og:title" content="Genogramm-Atelier – Genogramm-Editor von DokuPfad">
+<meta property="og:description" content="Genogramme nach McGoldrick/Gerson/Petry erstellen — direkt im Browser, ohne Anmeldung, ohne Serverübertragung.">
+<meta property="og:url" content="https://dokupfad.de/genogramm.html">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+  :root {
+    --site-bg: 150 40% 98%;
+    --site-border: 150 25% 89%;
+    --site-fg: 162 73% 10%;
+    --site-primary: 160 84% 39%;
+    --site-primary-deep: 162 73% 22%;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --site-bg: 162 73% 7%;
+      --site-border: 162 60% 18%;
+      --site-fg: 150 40% 95%;
+      --site-primary: 160 84% 45%;
+      --site-primary-deep: 151 71% 78%;
+    }
+  }
+  html, body { height: 100%; margin: 0; }
+  .page-shell { display: flex; flex-direction: column; height: 100%; }
+  .site-header {
+    flex-shrink: 0;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px clamp(14px, 3vw, 28px);
+    background: hsl(var(--site-bg));
+    border-bottom: 1px solid hsl(var(--site-border));
+    font-family: 'Outfit', 'IBM Plex Sans', sans-serif;
+  }
+  .site-header .home-link {
+    display: flex; align-items: center; gap: 8px;
+    text-decoration: none; color: hsl(var(--site-fg));
+    font-weight: 700; font-size: 0.98rem;
+  }
+  .site-header .home-link img { height: 24px; width: auto; }
+  .site-header .site-links { display: flex; align-items: center; gap: 16px; font-size: 0.85rem; }
+  .site-header .site-links a { color: hsl(var(--site-primary-deep)); text-decoration: none; }
+  .site-header .site-links a:hover { text-decoration: underline; }
+  #app { flex: 1; min-height: 0; }
+    --paper: hsl(38 28% 97%);
+    --paper-raised: hsl(38 22% 100%);
+    --paper-sunken: hsl(38 20% 93%);
+    --ink: hsl(220 22% 14%);
+    --ink-soft: hsl(220 12% 42%);
+    --ink-faint: hsl(220 10% 60%);
+    --line: hsl(220 14% 82%);
+    --line-strong: hsl(220 14% 66%);
+    --accent: hsl(202 60% 36%);
+    --accent-ink: hsl(0 0% 100%);
+    --accent-soft: hsl(202 55% 93%);
+    --accent-soft-ink: hsl(202 60% 26%);
+    --warn: hsl(28 78% 46%);
+    --danger: hsl(355 62% 46%);
+    --danger-soft: hsl(355 60% 95%);
+    --shadow: 220 30% 10%;
+    --canvas-dot: hsl(220 14% 86%);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper: hsl(222 22% 10%);
+      --paper-raised: hsl(222 20% 14%);
+      --paper-sunken: hsl(222 24% 8%);
+      --ink: hsl(38 20% 93%);
+      --ink-soft: hsl(220 10% 68%);
+      --ink-faint: hsl(220 8% 48%);
+      --line: hsl(220 14% 26%);
+      --line-strong: hsl(220 14% 38%);
+      --accent: hsl(202 65% 62%);
+      --accent-ink: hsl(222 30% 8%);
+      --accent-soft: hsl(202 45% 18%);
+      --accent-soft-ink: hsl(202 70% 84%);
+      --warn: hsl(30 80% 62%);
+      --danger: hsl(355 70% 66%);
+      --danger-soft: hsl(355 40% 18%);
+      --shadow: 0 0% 0%;
+      --canvas-dot: hsl(220 16% 22%);
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: hsl(222 22% 10%);
+    --paper-raised: hsl(222 20% 14%);
+    --paper-sunken: hsl(222 24% 8%);
+    --ink: hsl(38 20% 93%);
+    --ink-soft: hsl(220 10% 68%);
+    --ink-faint: hsl(220 8% 48%);
+    --line: hsl(220 14% 26%);
+    --line-strong: hsl(220 14% 38%);
+    --accent: hsl(202 65% 62%);
+    --accent-ink: hsl(222 30% 8%);
+    --accent-soft: hsl(202 45% 18%);
+    --accent-soft-ink: hsl(202 70% 84%);
+    --warn: hsl(30 80% 62%);
+    --danger: hsl(355 70% 66%);
+    --danger-soft: hsl(355 40% 18%);
+    --shadow: 0 0% 0%;
+    --canvas-dot: hsl(220 16% 22%);
+  }
+
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: 'IBM Plex Sans', system-ui, sans-serif;
+    height: 100%;
+    overflow: hidden;
+  }
+  html { height: 100%; }
+  .mono { font-family: 'IBM Plex Mono', ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+  button { font-family: inherit; }
+  svg text { font-family: 'IBM Plex Sans', system-ui, sans-serif; }
+
+  #app {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  /* ── Toolbar ─────────────────────────────────────────────────────── */
+  .toolbar {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 12px;
+    background: var(--paper-raised);
+    border-bottom: 1px solid var(--line);
+    flex-wrap: wrap;
+    z-index: 20;
+  }
+  .brand {
+    font-weight: 700;
+    font-size: 15px;
+    letter-spacing: -0.01em;
+    margin-right: 10px;
+    white-space: nowrap;
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+  }
+  .brand .sub { font-weight: 400; font-size: 11px; color: var(--ink-faint); }
+  .tb-group { display: flex; gap: 2px; align-items: center; padding: 0 6px; border-right: 1px solid var(--line); }
+  .tb-group:last-child { border-right: none; }
+  .tb-btn {
+    display: flex; align-items: center; gap: 6px;
+    background: transparent; border: 1px solid transparent; border-radius: 7px;
+    color: var(--ink-soft); padding: 7px 9px; font-size: 12.5px; font-weight: 500;
+    cursor: pointer; white-space: nowrap;
+  }
+  .tb-btn:hover { background: var(--paper-sunken); color: var(--ink); }
+  .tb-btn:disabled { opacity: .35; cursor: not-allowed; }
+  .tb-btn:disabled:hover { background: transparent; }
+  .tb-btn.primary { background: var(--accent); color: var(--accent-ink); }
+  .tb-btn.primary:hover { filter: brightness(1.08); }
+  .tb-btn svg { width: 15px; height: 15px; flex-shrink: 0; }
+  .tb-spacer { flex: 1; }
+  .zoom-readout { font-size: 11.5px; color: var(--ink-faint); width: 38px; text-align: center; }
+
+  /* ── Workspace ───────────────────────────────────────────────────── */
+  .workspace { flex: 1; display: flex; min-height: 0; position: relative; }
+
+  .palette {
+    width: 168px; flex-shrink: 0;
+    background: var(--paper-raised);
+    border-right: 1px solid var(--line);
+    overflow-y: auto;
+    padding: 12px 10px;
+    display: flex; flex-direction: column; gap: 14px;
+  }
+  .palette-section h3 {
+    font-size: 10.5px; text-transform: uppercase; letter-spacing: .07em;
+    color: var(--ink-faint); margin: 0 0 7px 2px; font-weight: 600;
+  }
+  .palette-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .pal-btn {
+    display: flex; flex-direction: column; align-items: center; gap: 4px;
+    background: var(--paper); border: 1px solid var(--line); border-radius: 9px;
+    padding: 9px 4px 7px; cursor: pointer; color: var(--ink-soft); font-size: 10.5px; font-weight: 500;
+  }
+  .pal-btn:hover { border-color: var(--accent); color: var(--ink); }
+  .pal-btn.active { border-color: var(--accent); background: var(--accent-soft); color: var(--accent-soft-ink); }
+  .pal-btn svg { width: 26px; height: 26px; }
+  .pal-btn-wide { grid-column: 1 / -1; flex-direction: row; justify-content: flex-start; padding: 8px 10px; gap: 8px; }
+  .pal-btn-wide svg { width: 17px; height: 17px; }
+
+  .rel-list { display: flex; flex-direction: column; gap: 3px; }
+  .rel-item {
+    display: flex; align-items: center; gap: 8px;
+    background: var(--paper); border: 1px solid var(--line); border-radius: 7px;
+    padding: 6px 8px; cursor: pointer; font-size: 11px; color: var(--ink-soft); text-align: left;
+  }
+  .rel-item:hover { border-color: var(--accent); color: var(--ink); }
+  .rel-item.active { border-color: var(--accent); background: var(--accent-soft); color: var(--accent-soft-ink); }
+  .rel-swatch { width: 26px; height: 12px; flex-shrink: 0; }
+
+  .canvas-wrap {
+    flex: 1; position: relative; overflow: hidden; min-width: 0;
+    background-color: var(--paper-sunken);
+    background-image: radial-gradient(var(--canvas-dot) 1px, transparent 1px);
+    background-size: 22px 22px;
+    cursor: default;
+  }
+  .canvas-wrap.mode-place { cursor: crosshair; }
+  .canvas-wrap.mode-pan { cursor: grab; }
+  .canvas-wrap.panning { cursor: grabbing; }
+  svg#canvas { width: 100%; height: 100%; display: block; user-select: none; }
+
+  .hint-bar {
+    position: absolute; top: 10px; left: 50%; transform: translateX(-50%);
+    background: var(--ink); color: var(--paper);
+    font-size: 12px; padding: 7px 14px; border-radius: 999px;
+    box-shadow: 0 4px 14px hsl(var(--shadow) / .25);
+    display: flex; align-items: center; gap: 10px; z-index: 10;
+    max-width: calc(100% - 32px);
+  }
+  .hint-bar button { background: hsl(0 0% 100% / .15); border: none; color: inherit; border-radius: 999px; padding: 3px 10px; font-size: 11px; cursor: pointer; }
+  .hint-bar[hidden] { display: none; }
+
+  /* ── Properties panel ───────────────────────────────────────────── */
+  .props {
+    width: 280px; flex-shrink: 0;
+    background: var(--paper-raised);
+    border-left: 1px solid var(--line);
+    overflow-y: auto;
+    display: flex; flex-direction: column;
+  }
+  .props[hidden] { display: none; }
+  .props-head {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 13px 14px; border-bottom: 1px solid var(--line);
+  }
+  .props-head h2 { font-size: 13.5px; margin: 0; font-weight: 600; }
+  .props-close { background: none; border: none; color: var(--ink-faint); cursor: pointer; padding: 4px; border-radius: 6px; }
+  .props-close:hover { background: var(--paper-sunken); color: var(--ink); }
+  .props-body { padding: 14px; display: flex; flex-direction: column; gap: 12px; }
+  .field label { display: block; font-size: 11px; font-weight: 600; color: var(--ink-soft); margin-bottom: 4px; }
+  .field input[type=text], .field input[type=number], .field select, .field textarea {
+    width: 100%; background: var(--paper); border: 1px solid var(--line); border-radius: 7px;
+    padding: 7px 9px; font-size: 12.5px; color: var(--ink); font-family: inherit;
+  }
+  .field textarea { resize: vertical; min-height: 52px; }
+  .field-row { display: flex; gap: 8px; }
+  .field-row .field { flex: 1; }
+  .check-row { display: flex; align-items: center; gap: 8px; font-size: 12.5px; }
+  .check-row input { width: 15px; height: 15px; accent-color: var(--accent); }
+  .tag-input-row { display: flex; gap: 6px; }
+  .tag-input-row input { flex: 1; }
+  .tag-add-btn { background: var(--accent-soft); color: var(--accent-soft-ink); border: none; border-radius: 7px; padding: 0 11px; font-size: 16px; cursor: pointer; }
+  .tags { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 6px; }
+  .tag { display: flex; align-items: center; gap: 5px; background: var(--paper-sunken); border-radius: 999px; padding: 3px 4px 3px 9px; font-size: 11px; }
+  .tag button { background: none; border: none; color: var(--ink-faint); cursor: pointer; font-size: 13px; line-height: 1; padding: 2px 5px; }
+  .notes-list { display: flex; flex-direction: column; gap: 6px; }
+  .note-chip { background: var(--paper-sunken); border-radius: 8px; padding: 7px 9px; font-size: 11.5px; display: flex; gap: 8px; }
+  .note-chip .y { font-weight: 600; color: var(--accent); flex-shrink: 0; }
+  .note-chip button { margin-left: auto; background: none; border: none; color: var(--ink-faint); cursor: pointer; }
+  .props-footer { margin-top: auto; padding: 12px 14px; border-top: 1px solid var(--line); }
+  .danger-btn {
+    width: 100%; background: var(--danger-soft); color: var(--danger); border: none; border-radius: 8px;
+    padding: 9px; font-size: 12.5px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;
+  }
+  .danger-btn:hover { filter: brightness(0.96); }
+  .empty-props { padding: 28px 20px; text-align: center; color: var(--ink-faint); font-size: 12.5px; line-height: 1.6; }
+
+  /* ── Legend ──────────────────────────────────────────────────────── */
+  .legend {
+    position: absolute; right: 14px; bottom: 14px; width: 300px; max-height: min(72vh, 560px);
+    background: var(--paper-raised); border: 1px solid var(--line); border-radius: 12px;
+    box-shadow: 0 10px 30px hsl(var(--shadow) / .18);
+    display: flex; flex-direction: column; z-index: 15;
+  }
+  .legend[hidden] { display: none; }
+  .legend-head { display: flex; align-items: center; justify-content: space-between; padding: 11px 13px; border-bottom: 1px solid var(--line); }
+  .legend-head h2 { font-size: 12.5px; margin: 0; font-weight: 600; }
+  .legend-body { overflow-y: auto; padding: 10px 13px 14px; }
+  .legend-sec { margin-bottom: 12px; }
+  .legend-sec h3 { font-size: 10px; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-faint); margin: 0 0 6px; }
+  .legend-row { display: flex; align-items: center; gap: 9px; padding: 3px 0; font-size: 11.5px; color: var(--ink-soft); }
+  .legend-row svg, .legend-row .lg-swatch { flex-shrink: 0; }
+  .lg-swatch { width: 30px; height: 14px; }
+
+  /* ── Modal (connector picker / export / load) ───────────────────── */
+  .modal-backdrop {
+    position: fixed; inset: 0; background: hsl(220 30% 8% / .42);
+    display: flex; align-items: center; justify-content: center; z-index: 50; padding: 20px;
+  }
+  .modal-backdrop[hidden] { display: none; }
+  .modal {
+    background: var(--paper-raised); border-radius: 14px; width: min(400px, 100%);
+    box-shadow: 0 20px 50px hsl(var(--shadow) / .3); max-height: 84vh; display: flex; flex-direction: column;
+  }
+  .modal-head { padding: 16px 18px 4px; }
+  .modal-head h2 { font-size: 15px; margin: 0 0 2px; }
+  .modal-head p { font-size: 12px; color: var(--ink-faint); margin: 0; }
+  .modal-body { padding: 14px 18px 18px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; }
+  .modal-opt {
+    display: flex; align-items: center; gap: 11px; text-align: left;
+    background: var(--paper); border: 1px solid var(--line); border-radius: 9px;
+    padding: 9px 11px; cursor: pointer; font-size: 12.5px; color: var(--ink);
+  }
+  .modal-opt:hover { border-color: var(--accent); background: var(--accent-soft); }
+  .modal-opt .sw { flex-shrink: 0; }
+  .modal-opt .lbl { display: flex; flex-direction: column; }
+  .modal-opt .lbl b { font-weight: 600; font-size: 12.5px; }
+  .modal-opt .lbl span { font-size: 10.5px; color: var(--ink-faint); }
+  .modal-cancel { padding: 12px 18px; border-top: 1px solid var(--line); }
+  .modal-cancel button { width: 100%; background: var(--paper-sunken); border: none; border-radius: 8px; padding: 9px; font-size: 12.5px; font-weight: 600; color: var(--ink-soft); cursor: pointer; }
+
+  /* ── Wizard (geführter Fragebogen) ──────────────────────────────── */
+  .wizard-card {
+    background: var(--paper-raised); border-radius: 16px; width: min(560px, 100%);
+    box-shadow: 0 24px 60px hsl(var(--shadow) / .32); max-height: 88vh; display: flex; flex-direction: column;
+  }
+  .wizard-head { padding: 18px 22px 14px; border-bottom: 1px solid var(--line); }
+  .wizard-head-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .wizard-head h2 { font-size: 17px; margin: 0; font-weight: 700; }
+  .wizard-head p#wizIntro { font-size: 12.5px; color: var(--ink-faint); margin: 5px 0 12px; line-height: 1.5; }
+  .wiz-progress { height: 5px; border-radius: 999px; background: var(--paper-sunken); overflow: hidden; }
+  .wiz-progress-fill { height: 100%; background: var(--accent); border-radius: 999px; transition: width .25s ease; }
+  .wiz-step-count { display: block; margin-top: 6px; font-size: 10.5px; color: var(--ink-faint); font-weight: 600; text-transform: uppercase; letter-spacing: .05em; }
+  .wizard-body { padding: 18px 22px; overflow-y: auto; display: flex; flex-direction: column; gap: 14px; flex: 1; }
+  .wizard-foot { display: flex; align-items: center; gap: 8px; padding: 14px 22px; border-top: 1px solid var(--line); }
+  .wizard-foot .tb-btn { padding: 9px 15px; border: 1px solid var(--line); }
+  .wizard-foot #wizSkip { color: var(--ink-faint); border-color: transparent; }
+  .wizard-foot #wizBack:disabled { visibility: hidden; }
+
+  .wiz-lead { font-size: 13px; color: var(--ink-soft); line-height: 1.6; margin: 0; }
+  .wiz-choice-group { display: flex; flex-direction: column; gap: 7px; }
+  .wiz-choice {
+    display: flex; align-items: center; gap: 11px; text-align: left; width: 100%;
+    background: var(--paper); border: 1.5px solid var(--line); border-radius: 10px;
+    padding: 11px 13px; cursor: pointer; font-size: 13px; color: var(--ink); font-family: inherit;
+  }
+  .wiz-choice:hover { border-color: var(--accent); }
+  .wiz-choice.sel { border-color: var(--accent); background: var(--accent-soft); color: var(--accent-soft-ink); font-weight: 600; }
+  .wiz-choice .dot { width: 16px; height: 16px; border-radius: 50%; border: 2px solid var(--line-strong); flex-shrink: 0; position: relative; }
+  .wiz-choice.sel .dot { border-color: var(--accent); }
+  .wiz-choice.sel .dot::after { content:""; position:absolute; inset:2px; border-radius:50%; background: var(--accent); }
+
+  .wiz-stepper { display: flex; align-items: center; gap: 12px; }
+  .wiz-stepper button { width: 34px; height: 34px; border-radius: 9px; border: 1.5px solid var(--line); background: var(--paper); color: var(--ink); font-size: 17px; cursor: pointer; line-height: 1; }
+  .wiz-stepper button:hover { border-color: var(--accent); }
+  .wiz-stepper button:disabled { opacity: .35; cursor: not-allowed; }
+  .wiz-stepper .count { font-size: 20px; font-weight: 700; width: 30px; text-align: center; font-family: 'IBM Plex Mono', monospace; }
+
+  .wiz-subhead { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-faint); font-weight: 700; margin: 0; }
+  .wiz-person-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 12px; }
+  .wiz-person-grid .field-span2 { grid-column: 1 / -1; }
+  .wiz-card-group { display: flex; flex-direction: column; gap: 12px; }
+  .wiz-person-card { background: var(--paper); border: 1px solid var(--line); border-radius: 11px; padding: 13px; display: flex; flex-direction: column; gap: 10px; }
+  .wiz-person-card-head { display: flex; align-items: center; justify-content: space-between; }
+  .wiz-person-card-head b { font-size: 12px; }
+  .wiz-remove-row { background: none; border: none; color: var(--ink-faint); cursor: pointer; font-size: 12px; padding: 3px 6px; }
+  .wiz-remove-row:hover { color: var(--danger); }
+  .wiz-add-row {
+    align-self: flex-start; background: var(--accent-soft); color: var(--accent-soft-ink); border: none; border-radius: 8px;
+    padding: 8px 13px; font-size: 12px; font-weight: 600; cursor: pointer;
+  }
+  .wiz-pair-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; background: var(--paper); border: 1px solid var(--line); border-radius: 10px; padding: 9px 12px; }
+  .wiz-pair-row span { font-size: 12.5px; }
+  .wiz-pair-row select { font-size: 12px; padding: 6px 8px; border-radius: 7px; border: 1px solid var(--line); background: var(--paper-raised); color: var(--ink); max-width: 190px; }
+  .wiz-check-list { display: flex; flex-direction: column; gap: 6px; }
+  .wiz-check-list label { display: flex; align-items: center; gap: 9px; font-size: 12.5px; background: var(--paper); border: 1px solid var(--line); border-radius: 8px; padding: 8px 11px; cursor: pointer; }
+  .wiz-check-list input { width: 15px; height: 15px; accent-color: var(--accent); }
+  .wiz-summary { display: flex; flex-direction: column; gap: 8px; }
+  .wiz-summary-row { display: flex; justify-content: space-between; font-size: 13px; padding: 8px 12px; background: var(--paper); border-radius: 8px; }
+  .wiz-summary-row b { font-family: 'IBM Plex Mono', monospace; }
+  .wiz-note { font-size: 11.5px; color: var(--ink-faint); background: var(--paper-sunken); border-radius: 8px; padding: 9px 11px; line-height: 1.5; }
+
+  /* ── Toast ───────────────────────────────────────────────────────── */
+  .toast {
+    position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%) translateY(10px);
+    background: var(--ink); color: var(--paper); font-size: 12.5px; padding: 9px 16px; border-radius: 999px;
+    box-shadow: 0 8px 24px hsl(var(--shadow) / .3); z-index: 60; opacity: 0; pointer-events: none;
+    transition: opacity .2s ease, transform .2s ease;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  input[type=file] { display: none; }
+
+  @media (max-width: 780px) {
+    .brand .sub { display: none; }
+    .tb-btn span.lbl { display: none; }
+    .palette { position: absolute; left: 0; top: 0; bottom: 0; z-index: 25; box-shadow: 8px 0 24px hsl(var(--shadow)/.15); transform: translateX(-100%); transition: transform .18s ease; }
+    .palette.open { transform: translateX(0); }
+    .props { position: absolute; right: 0; top: 0; bottom: 0; z-index: 25; box-shadow: -8px 0 24px hsl(var(--shadow)/.15); }
+    .legend { left: 14px; right: 14px; width: auto; }
+  }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+<div class="page-shell">
+<header class="site-header">
+  <a class="home-link" href="https://dokupfad.de">
+    <img src="favicon.svg" alt="">
+    DokuPfad
+  </a>
+  <nav class="site-links">
+    <a href="https://dokupfad.de">Zur Startseite</a>
+    <a href="https://dokupfad.de/#impressum">Impressum &amp; Datenschutz</a>
+  </nav>
+</header>
+
+<div id="app">
+  <div class="toolbar">
+    <div class="brand">Genogramm-Atelier <span class="sub">McGoldrick · Gerson · Petry</span></div>
+
+    <div class="tb-group">
+      <button class="tb-btn" id="btnPaletteToggle" title="Werkzeuge" aria-label="Werkzeuge ein-/ausblenden">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+      </button>
+    </div>
+
+    <div class="tb-group">
+      <button class="tb-btn primary" id="btnWizard" title="Geführter Fragebogen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg><span class="lbl">Fragebogen</span></button>
+    </div>
+
+    <div class="tb-group">
+      <button class="tb-btn" id="btnNew" title="Neues Genogramm"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg><span class="lbl">Neu</span></button>
+      <button class="tb-btn" id="btnSave" title="Als Datei speichern (.json)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z"/><path d="M17 21v-8H7v8M7 3v5h8"/></svg><span class="lbl">Speichern</span></button>
+      <button class="tb-btn" id="btnLoad" title="Datei laden (.json)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5M12 15V3"/></svg><span class="lbl">Laden</span></button>
+      <input type="file" id="fileInput" accept="application/json">
+      <button class="tb-btn" id="btnExport" title="Exportieren"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2M7 10l5-6 5 6M12 4v13"/></svg><span class="lbl">Export</span></button>
+    </div>
+
+    <div class="tb-group">
+      <button class="tb-btn" id="btnUndo" title="Rückgängig (Strg+Z)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7v6h6"/><path d="M3 13a9 9 0 1 0 2.6-6.4L3 9"/></svg></button>
+      <button class="tb-btn" id="btnRedo" title="Wiederholen (Strg+Shift+Z)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 7v6h-6"/><path d="M21 13a9 9 0 1 1-2.6-6.4L21 9"/></svg></button>
+    </div>
+
+    <div class="tb-group">
+      <button class="tb-btn" id="btnZoomOut" title="Verkleinern">−</button>
+      <span class="zoom-readout mono" id="zoomReadout">100%</span>
+      <button class="tb-btn" id="btnZoomIn" title="Vergrößern">+</button>
+      <button class="tb-btn" id="btnZoomFit" title="Alles einpassen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3m11 0h3a2 2 0 0 0 2-2v-3"/></svg></button>
+    </div>
+
+    <div class="tb-spacer"></div>
+    <div class="tb-group" style="border-right:none;">
+      <button class="tb-btn" id="btnLegend" title="Legende"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2Z"/></svg><span class="lbl">Legende</span></button>
+    </div>
+  </div>
+
+  <div class="workspace">
+    <aside class="palette" id="palette">
+      <div class="palette-section">
+        <h3>Person platzieren</h3>
+        <div class="palette-grid">
+          <button class="pal-btn" data-place="m" title="Mann"><svg viewBox="0 0 44 44"><rect x="9" y="9" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2.4"/></svg>Mann</button>
+          <button class="pal-btn" data-place="f" title="Frau"><svg viewBox="0 0 44 44"><circle cx="22" cy="22" r="14" fill="none" stroke="currentColor" stroke-width="2.4"/></svg>Frau</button>
+          <button class="pal-btn" data-place="d" title="Divers / nicht-binär"><svg viewBox="0 0 44 44"><path d="M22 6 A14 14 0 0 1 36 20 L36 36 L8 36 L8 20 A14 14 0 0 1 22 6 Z" fill="none" stroke="currentColor" stroke-width="2.4"/></svg>Divers</button>
+          <button class="pal-btn" data-place="u" title="Geschlecht unbekannt"><svg viewBox="0 0 44 44"><rect x="22" y="6" width="22.6" height="22.6" fill="none" stroke="currentColor" stroke-width="2.4" transform="rotate(45 22 22)"/></svg>Unbekannt</button>
+        </div>
+      </div>
+
+      <div class="palette-section">
+        <h3>Verbinden</h3>
+        <div class="rel-list">
+          <button class="rel-item" data-connect="partner"><svg class="rel-swatch" viewBox="0 0 26 12"><line x1="1" y1="6" x2="25" y2="6" stroke="currentColor" stroke-width="2"/></svg>Partnerschaft…</button>
+          <button class="rel-item" data-connect="parentchild"><svg class="rel-swatch" viewBox="0 0 26 12"><line x1="13" y1="0" x2="13" y2="12" stroke="currentColor" stroke-width="2"/></svg>Eltern–Kind…</button>
+          <button class="rel-item" data-connect="emotional"><svg class="rel-swatch" viewBox="0 0 26 12"><path d="M1 6 Q13 -2 25 6" fill="none" stroke="currentColor" stroke-width="2"/></svg>Beziehungsqualität…</button>
+        </div>
+      </div>
+
+      <div class="palette-section">
+        <h3>Weitere Werkzeuge</h3>
+        <div class="palette-grid">
+          <button class="pal-btn pal-btn-wide" id="toolHousehold"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-dasharray="3 2"><rect x="3" y="3" width="18" height="18" rx="3"/></svg>Haushalt markieren</button>
+          <button class="pal-btn pal-btn-wide" id="toolNote"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 3v4a1 1 0 0 0 1 1h4"/><path d="M17 21H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7l5 5v11a2 2 0 0 1-2 2Z"/></svg>Ereignis-Notiz</button>
+        </div>
+      </div>
+
+      <div class="palette-section" style="margin-top: auto;">
+        <h3>Datenschutz</h3>
+        <p style="font-size:11px; color:var(--ink-faint); line-height:1.55; margin:0;">Alles bleibt lokal in diesem Browser. Nichts wird automatisch hochgeladen. Für Namen empfiehlt sich die Verwendung von Initialen statt Klarnamen.</p>
+      </div>
+    </aside>
+
+    <div class="canvas-wrap" id="canvasWrap">
+      <div class="hint-bar" id="hintBar" hidden>
+        <span id="hintText"></span>
+        <button id="hintCancel">Abbrechen (Esc)</button>
+      </div>
+      <svg id="canvas" viewBox="0 0 1200 800"></svg>
+    </div>
+
+    <aside class="props" id="props" hidden></aside>
+
+    <div class="legend" id="legend" hidden>
+      <div class="legend-head">
+        <h2>Legende</h2>
+        <button class="props-close" id="btnLegendClose" aria-label="Legende schließen">✕</button>
+      </div>
+      <div class="legend-body" id="legendBody"></div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="modalBackdrop" hidden>
+  <div class="modal">
+    <div class="modal-head"><h2 id="modalTitle"></h2><p id="modalSub"></p></div>
+    <div class="modal-body" id="modalBody"></div>
+    <div class="modal-cancel"><button id="modalCancelBtn">Abbrechen</button></div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="wizardBackdrop" hidden>
+  <div class="wizard-card">
+    <div class="wizard-head">
+      <div class="wizard-head-top">
+        <h2 id="wizTitle"></h2>
+        <button class="props-close" id="wizClose" aria-label="Fragebogen schließen">✕</button>
+      </div>
+      <p id="wizIntro"></p>
+      <div class="wiz-progress"><div class="wiz-progress-fill" id="wizProgressFill"></div></div>
+      <span class="wiz-step-count" id="wizStepCount"></span>
+    </div>
+    <div class="wizard-body" id="wizBody"></div>
+    <div class="wizard-foot">
+      <button class="tb-btn" id="wizBack">Zurück</button>
+      <button class="tb-btn" id="wizSkip">Überspringen</button>
+      <div class="tb-spacer"></div>
+      <button class="tb-btn primary" id="wizNext">Weiter</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function () {
+  "use strict";
+
+  /* ───────────────────────── Data / constants ───────────────────────── */
+  const R = 22; // person symbol half-size
+  const GENDERS = { m: "Mann", f: "Frau", d: "Divers", u: "Unbekannt" };
+
+  const PARTNER_TYPES = [
+    { id: "married", label: "Verheiratet", hint: "durchgezogene Linie" },
+    { id: "unmarried", label: "Unverheiratete Lebensgemeinschaft", hint: "gestrichelte Linie" },
+    { id: "engaged", label: "Verlobt", hint: "gepunktete Linie" },
+    { id: "separated", label: "Getrennt", hint: "ein Schrägstrich" },
+    { id: "divorced", label: "Geschieden", hint: "zwei Schrägstriche" },
+  ];
+  const PARENTCHILD_TYPES = [
+    { id: "biological", label: "Biologisch", hint: "durchgezogene Linie" },
+    { id: "adoption", label: "Adoption", hint: "gestrichelte Linie" },
+    { id: "foster", label: "Pflegeverhältnis", hint: "gestrichelt, „Pflege“" },
+  ];
+  const EMOTIONAL_TYPES = [
+    { id: "connected", label: "Verbunden (neutral)" },
+    { id: "close", label: "Eng / harmonisch" },
+    { id: "fused", label: "Verstrickt / fusioniert" },
+    { id: "distant", label: "Distanziert" },
+    { id: "estranged", label: "Entfremdet / Kontaktabbruch" },
+    { id: "estranged-repaired", label: "Kontaktabbruch, aufgehoben" },
+    { id: "conflict", label: "Konflikthaft" },
+    { id: "close-conflict", label: "Eng und konflikthaft" },
+    { id: "fused-conflict", label: "Verstrickt und konflikthaft" },
+    { id: "abuse", label: "Gewalt / Missbrauch" },
+  ];
+
+  function uid(p) { return p + Math.random().toString(36).slice(2, 9); }
+
+  /* ───────────────────────── State ───────────────────────── */
+  let state = emptyState();
+  let history = [], historyIdx = -1, historySuspended = false;
+  let view = { x: 0, y: 0, scale: 1 };
+  let selection = null; // { type:'person'|'rel'|'note', id }
+  let placeMode = null; // gender letter while placing
+  let connectMode = null; // { kind, subtype, first }
+  let householdMode = false, householdPick = [];
+  let noteMode = false;
+  let dragging = null; // { id, dx, dy }
+  let panDrag = null;
+
+  function emptyState() {
+    return { people: [], relationships: [], households: [], notes: [] };
+  }
+
+  function sampleState() {
+    const gp1 = { id: uid("p"), x: 260, y: 90, gender: "m", deceased: true, isIndex: false, name: "H.M.", birthYear: "1938", deathYear: "2011", profession: "Schreiner", diagnoses: [], origin: "", religion: "", notes: "" };
+    const gp2 = { id: uid("p"), x: 400, y: 90, gender: "f", deceased: true, isIndex: false, name: "R.M.", birthYear: "1941", deathYear: "2019", profession: "", diagnoses: [], origin: "", religion: "", notes: "" };
+    const f = { id: uid("p"), x: 400, y: 250, gender: "m", deceased: false, isIndex: false, name: "T.M.", birthYear: "1966", deathYear: "", profession: "Kraftfahrer", diagnoses: ["Alkoholabhängigkeit"], origin: "", religion: "", notes: "" };
+    const m = { id: uid("p"), x: 560, y: 250, gender: "f", deceased: false, isIndex: false, name: "S.K.", birthYear: "1970", deathYear: "", profession: "Erzieherin", diagnoses: [], origin: "", religion: "", notes: "" };
+    const c1 = { id: uid("p"), x: 480, y: 420, gender: "f", deceased: false, isIndex: true, name: "L.M.", birthYear: "1998", deathYear: "", profession: "Schülerin", diagnoses: ["Angststörung"], origin: "", religion: "", notes: "Klientin" };
+    const c2 = { id: uid("p"), x: 620, y: 420, gender: "u", deceased: false, isIndex: false, name: "J.M.", birthYear: "2003", deathYear: "", profession: "", diagnoses: [], origin: "", religion: "", notes: "" };
+    const partnersGp = { id: uid("r"), type: "partner", subtype: "married", from: gp1.id, to: gp2.id, year: "1962", order: 0 };
+    const partners1 = { id: uid("r"), type: "partner", subtype: "divorced", from: f.id, to: m.id, year: "1996", order: 0 };
+    const pc1 = { id: uid("r"), type: "parentchild", subtype: "biological", parentIds: [gp1.id, gp2.id], childId: f.id };
+    const pc2 = { id: uid("r"), type: "parentchild", subtype: "biological", parentIds: [f.id, m.id], childId: c1.id };
+    const pc3 = { id: uid("r"), type: "parentchild", subtype: "biological", parentIds: [f.id, m.id], childId: c2.id };
+    const em1 = { id: uid("r"), type: "emotional", subtype: "fused-conflict", from: c1.id, to: m.id };
+    const em2 = { id: uid("r"), type: "emotional", subtype: "estranged", from: c1.id, to: f.id };
+    const em3 = { id: uid("r"), type: "emotional", subtype: "close", from: c1.id, to: c2.id };
+    return {
+      people: [gp1, gp2, f, m, c1, c2],
+      relationships: [partnersGp, partners1, pc1, pc2, pc3, em1, em2, em3],
+      households: [{ id: uid("h"), memberIds: [m.id, c1.id, c2.id], label: "gemeinsamer Haushalt" }],
+      notes: [{ id: uid("n"), targetId: c1.id, targetType: "person", year: "2024", text: "Auszug aus dem elterlichen Haushalt" }],
+    };
+  }
+
+  /* ───────────────────────── History ───────────────────────── */
+  function pushHistory() {
+    if (historySuspended) return;
+    history = history.slice(0, historyIdx + 1);
+    history.push(JSON.stringify(state));
+    if (history.length > 80) history.shift();
+    historyIdx = history.length - 1;
+    updateUndoRedoButtons();
+  }
+  function undo() {
+    if (historyIdx <= 0) return;
+    historyIdx--;
+    state = JSON.parse(history[historyIdx]);
+    selection = null;
+    render(); renderProps(); updateUndoRedoButtons(); autosave();
+  }
+  function redo() {
+    if (historyIdx >= history.length - 1) return;
+    historyIdx++;
+    state = JSON.parse(history[historyIdx]);
+    selection = null;
+    render(); renderProps(); updateUndoRedoButtons(); autosave();
+  }
+  function updateUndoRedoButtons() {
+    $("#btnUndo").disabled = historyIdx <= 0;
+    $("#btnRedo").disabled = historyIdx >= history.length - 1;
+  }
+
+  /* ───────────────────────── DOM helpers ───────────────────────── */
+  function $(sel, root) { return (root || document).querySelector(sel); }
+  function $all(sel, root) { return Array.from((root || document).querySelectorAll(sel)); }
+  function el(tag, attrs, children) {
+    const n = document.createElementNS(tag === "svg" || SVG_TAGS.has(tag) ? SVGNS : null, tag);
+    if (attrs) for (const k in attrs) {
+      if (k === "text") n.textContent = attrs[k];
+      else n.setAttribute(k, attrs[k]);
+    }
+    if (children) children.forEach(c => c && n.appendChild(c));
+    return n;
+  }
+  const SVGNS = "http://www.w3.org/2000/svg";
+  const SVG_TAGS = new Set(["svg","g","rect","circle","line","path","text","polygon","polyline","defs","marker","tspan"]);
+
+  let toastTimer;
+  function toast(msg) {
+    const t = $("#toast");
+    t.textContent = msg;
+    t.classList.add("show");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => t.classList.remove("show"), 2600);
+  }
+
+  /* ───────────────────────── Geometry helpers ───────────────────────── */
+  function personById(id) { return state.people.find(p => p.id === id); }
+  function relById(id) { return state.relationships.find(r => r.id === id); }
+  function ageLabel(p) {
+    const by = parseInt(p.birthYear, 10);
+    if (!by) return "";
+    if (p.deceased && p.deathYear) return by + "–" + p.deathYear;
+    if (p.deceased) return "*" + by + " †";
+    return "*" + by;
+  }
+  function partnerLineOf(personId, otherId) {
+    return state.relationships.find(r => r.type === "partner" &&
+      ((r.from === personId && r.to === otherId) || (r.from === otherId && r.to === personId)));
+  }
+  function partnerLinksForPair(a, b) {
+    return state.relationships.filter(r => r.type === "partner" &&
+      ((r.from === a && r.to === b) || (r.from === b && r.to === a)));
+  }
+
+  /* ───────────────────────── Rendering ───────────────────────── */
+  const svg = $("#canvas");
+
+  function render() {
+    svg.innerHTML = "";
+    const world = el("g", { id: "world", transform: worldTransform() });
+    svg.appendChild(world);
+
+    const structLayer = el("g", { class: "layer-struct" });
+    const emoLayer = el("g", { class: "layer-emo" });
+    const houseLayer = el("g", { class: "layer-house" });
+    const peopleLayer = el("g", { class: "layer-people" });
+    const noteLayer = el("g", { class: "layer-notes" });
+    world.appendChild(houseLayer);
+    world.appendChild(structLayer);
+    world.appendChild(emoLayer);
+    world.appendChild(peopleLayer);
+    world.appendChild(noteLayer);
+
+    // households
+    state.households.forEach(h => renderHousehold(h, houseLayer));
+
+    // partnership + parent-child (structural)
+    state.relationships.filter(r => r.type === "partner").forEach(r => renderPartner(r, structLayer));
+    state.relationships.filter(r => r.type === "parentchild").forEach(r => renderParentChild(r, structLayer));
+
+    // emotional lines
+    state.relationships.filter(r => r.type === "emotional").forEach(r => renderEmotional(r, emoLayer));
+
+    // people
+    state.people.forEach(p => renderPerson(p, peopleLayer));
+
+    // notes
+    state.notes.forEach(n => renderNote(n, noteLayer));
+
+    updateZoomReadout();
+  }
+
+  function worldTransform() {
+    return `translate(${view.x} ${view.y}) scale(${view.scale})`;
+  }
+
+  function renderHousehold(h, layer) {
+    const pts = h.memberIds.map(personById).filter(Boolean);
+    if (!pts.length) return;
+    const pad = 44;
+    const minX = Math.min(...pts.map(p => p.x)) - pad;
+    const maxX = Math.max(...pts.map(p => p.x)) + pad;
+    const minY = Math.min(...pts.map(p => p.y)) - pad - 20;
+    const maxY = Math.max(...pts.map(p => p.y)) + pad + 12;
+    const g = el("g", { "data-household": h.id, style: "cursor:pointer" });
+    g.appendChild(el("rect", {
+      x: minX, y: minY, width: maxX - minX, height: maxY - minY, rx: 16,
+      fill: "none", stroke: "var(--line-strong)", "stroke-width": 1.6, "stroke-dasharray": "5 4"
+    }));
+    g.appendChild(el("text", {
+      x: minX + 12, y: minY + 15, fill: "var(--ink-faint)", "font-size": 10.5, "font-weight": 600, text: h.label || "Haushalt"
+    }));
+    g.addEventListener("click", (e) => { e.stopPropagation(); select("household", h.id); });
+    layer.appendChild(g);
+  }
+
+  function stackOffset(r) {
+    const links = partnerLinksForPair(r.from, r.to).sort((a, b) => (a.order||0) - (b.order||0));
+    const idx = links.findIndex(l => l.id === r.id);
+    return idx * 15;
+  }
+
+  function renderPartner(r, layer) {
+    const a = personById(r.from), b = personById(r.to);
+    if (!a || !b) return;
+    const left = a.x < b.x ? a : b;
+    const right = a.x < b.x ? b : a;
+    const y = Math.max(a.y, b.y) + R + 26 + stackOffset(r);
+    const g = el("g", { "data-rel": r.id, style: "cursor:pointer" });
+    g.appendChild(el("line", { x1: left.x, y1: left.y + R, x2: left.x, y2: y, stroke: "var(--ink-soft)", "stroke-width": 1.6 }));
+    g.appendChild(el("line", { x1: right.x, y1: right.y + R, x2: right.x, y2: y, stroke: "var(--ink-soft)", "stroke-width": 1.6 }));
+    const dash = r.subtype === "unmarried" ? "7 5" : r.subtype === "engaged" ? "2 4" : null;
+    g.appendChild(el("line", {
+      x1: left.x, y1: y, x2: right.x, y2: y, stroke: selection && selection.id===r.id ? "var(--accent)" : "var(--ink-soft)", "stroke-width": selection && selection.id===r.id ? 2.6 : 1.8,
+      "stroke-dasharray": dash || ""
+    }));
+    const midX = (left.x + right.x) / 2;
+    if (r.subtype === "separated" || r.subtype === "divorced") {
+      const n = r.subtype === "separated" ? 1 : 2;
+      for (let i = 0; i < n; i++) {
+        const cx = midX + (i - (n-1)/2) * 10;
+        g.appendChild(el("line", { x1: cx - 5, y1: y - 8, x2: cx + 5, y2: y + 8, stroke: "var(--ink-soft)", "stroke-width": 1.8 }));
+      }
+    }
+    const label = [r.subtype === "married" ? "∞" : r.subtype === "unmarried" ? "≈" : r.subtype === "engaged" ? "○" : r.subtype === "separated" ? "/" : "//", r.year].filter(Boolean).join(" ");
+    if (r.year) g.appendChild(el("text", { x: midX, y: y - 6, "text-anchor": "middle", "font-size": 10, fill: "var(--ink-faint)", class: "mono", text: r.year }));
+    g.appendChild(el("line", { x1: left.x - 30, y1: y, x2: right.x + 30, y2: y, stroke: "transparent", "stroke-width": 14 })); // hit area
+    g.addEventListener("click", (e) => { e.stopPropagation(); select("rel", r.id); });
+    layer.appendChild(g);
+    r._renderY = y; r._renderMidX = midX; r._left = left; r._right = right;
+  }
+
+  function renderParentChild(r, layer) {
+    const child = personById(r.childId);
+    if (!child) return;
+    const parents = (r.parentIds || []).map(personById).filter(Boolean);
+    if (!parents.length) return;
+    let originX, originY;
+    if (parents.length === 2) {
+      const pRel = partnerLinksForPair(parents[0].id, parents[1].id)[0];
+      if (pRel && pRel._renderY != null) { originX = pRel._renderMidX; originY = pRel._renderY; }
+      else { originX = (parents[0].x + parents[1].x) / 2; originY = Math.max(parents[0].y, parents[1].y) + R + 26; }
+    } else {
+      originX = parents[0].x; originY = parents[0].y + R;
+    }
+    const dashed = r.subtype !== "biological";
+    const g = el("g", { "data-rel": r.id, style: "cursor:pointer" });
+    const midY = (originY + (child.y - R)) / 2;
+    const strokeW = selection && selection.id===r.id ? 2.6 : 1.6;
+    const strokeC = selection && selection.id===r.id ? "var(--accent)" : "var(--ink-soft)";
+    g.appendChild(el("path", {
+      d: `M ${originX} ${originY} L ${originX} ${midY} L ${child.x} ${midY} L ${child.x} ${child.y - R}`,
+      fill: "none", stroke: strokeC, "stroke-width": strokeW, "stroke-dasharray": dashed ? "6 4" : ""
+    }));
+    if (r.subtype === "foster") {
+      g.appendChild(el("text", { x: (originX + child.x)/2, y: midY - 5, "text-anchor": "middle", "font-size": 9.5, fill: "var(--ink-faint)", text: "Pflege" }));
+    } else if (r.subtype === "adoption") {
+      g.appendChild(el("text", { x: (originX + child.x)/2, y: midY - 5, "text-anchor": "middle", "font-size": 9.5, fill: "var(--ink-faint)", text: "Adoption" }));
+    }
+    g.appendChild(el("path", { d: `M ${originX} ${originY} L ${originX} ${midY} L ${child.x} ${midY} L ${child.x} ${child.y - R}`, fill: "none", stroke: "transparent", "stroke-width": 14 }));
+    g.addEventListener("click", (e) => { e.stopPropagation(); select("rel", r.id); });
+    layer.appendChild(g);
+  }
+
+  const EMO_STYLE = {
+    connected:   { dash: "", n: 1, wave: false },
+    close:       { dash: "", n: 2, wave: false },
+    fused:       { dash: "", n: 3, wave: false },
+    distant:     { dash: "3 4", n: 1, wave: false },
+    estranged:   { dash: "", n: 1, wave: false, fence: true },
+    "estranged-repaired": { dash: "", n: 1, wave: false, fence: true, circle: true },
+    conflict:    { dash: "", n: 1, wave: true, waveAmp: 5 },
+    "close-conflict": { dash: "", n: 2, wave: true, waveAmp: 5 },
+    "fused-conflict": { dash: "", n: 3, wave: true, waveAmp: 5 },
+    abuse:       { dash: "", n: 1, wave: true, waveAmp: 8, bold: true },
+  };
+
+  function wavePath(x1, y1, x2, y2, amp) {
+    const dx = x2 - x1, dy = y2 - y1;
+    const len = Math.hypot(dx, dy);
+    const steps = Math.max(4, Math.round(len / 16));
+    const nx = -dy / len, ny = dx / len;
+    let d = `M ${x1} ${y1}`;
+    for (let i = 1; i <= steps; i++) {
+      const t = i / steps;
+      const bx = x1 + dx * t, by = y1 + dy * t;
+      const off = (i % 2 === 0 ? 1 : -1) * amp;
+      d += ` L ${bx + nx*off} ${by + ny*off}`;
+    }
+    return d;
+  }
+
+  function renderEmotional(r, layer) {
+    const a = personById(r.from), b = personById(r.to);
+    if (!a || !b) return;
+    const style = EMO_STYLE[r.subtype] || EMO_STYLE.connected;
+    const dx = b.x - a.x, dy = b.y - a.y, len = Math.hypot(dx, dy) || 1;
+    const ux = dx/len, uy = dy/len;
+    const x1 = a.x + ux*(R+3), y1 = a.y + uy*(R+3);
+    const x2 = b.x - ux*(R+3), y2 = b.y - uy*(R+3);
+    const g = el("g", { "data-rel": r.id, style: "cursor:pointer" });
+    const nx = -uy, ny = ux;
+    const selected = selection && selection.id === r.id;
+    const color = r.subtype === "abuse" ? "var(--danger)" : (selected ? "var(--accent)" : "var(--ink)");
+    const baseW = style.bold ? 2.6 : (selected ? 2.4 : 1.5);
+
+    for (let i = 0; i < style.n; i++) {
+      const off = (i - (style.n-1)/2) * 4.2;
+      const p1x = x1 + nx*off, p1y = y1 + ny*off, p2x = x2 + nx*off, p2y = y2 + ny*off;
+      const d = style.wave ? wavePath(p1x, p1y, p2x, p2y, style.waveAmp || 5) : `M ${p1x} ${p1y} L ${p2x} ${p2y}`;
+      g.appendChild(el("path", { d, fill: "none", stroke: color, "stroke-width": baseW, "stroke-dasharray": style.dash || "" }));
+    }
+    if (style.fence) {
+      const midx = (x1+x2)/2, midy = (y1+y2)/2;
+      [-6, 6].forEach(o => {
+        g.appendChild(el("line", { x1: midx + nx*10 + ux*o, y1: midy + ny*10 + uy*o, x2: midx - nx*10 + ux*o, y2: midy - ny*10 + uy*o, stroke: color, "stroke-width": 2 }));
+      });
+      if (style.circle) g.appendChild(el("circle", { cx: midx, cy: midy, r: 5, fill: "none", stroke: color, "stroke-width": 1.6 }));
+    }
+    g.appendChild(el("line", { x1, y1, x2, y2, stroke: "transparent", "stroke-width": 14 }));
+    g.addEventListener("click", (e) => { e.stopPropagation(); select("rel", r.id); });
+    layer.appendChild(g);
+  }
+
+  function symbolShape(p, selected) {
+    const strokeW = selected ? 2.6 : 2;
+    const stroke = selected ? "var(--accent)" : "var(--ink)";
+    const fill = "var(--paper-raised)";
+    const g = el("g");
+    function shapeAt(scale) {
+      const r2 = R * scale;
+      if (p.gender === "f") return el("circle", { cx: 0, cy: 0, r: r2, fill, stroke, "stroke-width": strokeW });
+      if (p.gender === "d") return el("path", { d: `M ${-r2} ${r2} L ${-r2} 0 A ${r2} ${r2} 0 0 1 ${r2} 0 L ${r2} ${r2} Z`, fill, stroke, "stroke-width": strokeW });
+      if (p.gender === "u") return el("rect", { x: -r2*0.8, y: -r2*0.8, width: r2*1.6, height: r2*1.6, fill, stroke, "stroke-width": strokeW, transform: "rotate(45)" });
+      return el("rect", { x: -r2, y: -r2, width: r2*2, height: r2*2, fill, stroke, "stroke-width": strokeW });
+    }
+    if (p.isIndex) {
+      const outer = shapeAt(1.22);
+      outer.setAttribute("fill", "none");
+      outer.setAttribute("stroke", "var(--accent)");
+      outer.setAttribute("stroke-width", 1.6);
+      g.appendChild(outer);
+    }
+    g.appendChild(shapeAt(1));
+    if (p.deceased) {
+      const k = R * 0.95;
+      g.appendChild(el("line", { x1: -k, y1: -k, x2: k, y2: k, stroke, "stroke-width": strokeW }));
+      g.appendChild(el("line", { x1: -k, y1: k, x2: k, y2: -k, stroke, "stroke-width": strokeW }));
+    }
+    return g;
+  }
+
+  function renderPerson(p, layer) {
+    const selected = selection && selection.type === "person" && selection.id === p.id;
+    const g = el("g", { "data-person": p.id, transform: `translate(${p.x} ${p.y})`, style: "cursor:grab" });
+    g.appendChild(symbolShape(p, selected));
+    const label1 = p.name || "—";
+    const label2 = ageLabel(p);
+    g.appendChild(el("text", { x: 0, y: R + 17, "text-anchor": "middle", "font-size": 12, "font-weight": 600, fill: "var(--ink)", text: label1 }));
+    if (label2) g.appendChild(el("text", { x: 0, y: R + 31, "text-anchor": "middle", "font-size": 10, fill: "var(--ink-faint)", class: "mono", text: label2 }));
+    if (p.diagnoses && p.diagnoses.length) {
+      g.appendChild(el("circle", { cx: R*0.78, cy: -R*0.78, r: 4.5, fill: "var(--warn)" }));
+    }
+    g.addEventListener("mousedown", (e) => onPersonMouseDown(e, p));
+    g.addEventListener("touchstart", (e) => onPersonMouseDown(e, p), { passive: true });
+    g.addEventListener("click", (e) => { e.stopPropagation(); onPersonClick(p); });
+    layer.appendChild(g);
+  }
+
+  function renderNote(n, layer) {
+    let x, y;
+    if (n.targetType === "person") { const p = personById(n.targetId); if (!p) return; x = p.x + R * 0.9; y = p.y - R * 0.9; }
+    else { const r = relById(n.targetId); if (!r) return; x = r._renderMidX != null ? r._renderMidX : 0; y = (r._renderY != null ? r._renderY : 0) - 14; }
+    const g = el("g", { "data-note": n.id, transform: `translate(${x} ${y})`, style: "cursor:pointer" });
+    g.appendChild(el("circle", { r: 8, fill: "var(--accent)", opacity: 0.14 }));
+    g.appendChild(el("text", { x: 0, y: 4, "text-anchor": "middle", "font-size": 11, fill: "var(--accent)", "font-weight": 700, text: "!" }));
+    g.addEventListener("click", (e) => { e.stopPropagation(); select("note", n.id); });
+    layer.appendChild(g);
+  }
+
+  /* ───────────────────────── Interaction: placing ───────────────────────── */
+  function screenToWorld(clientX, clientY) {
+    const rect = svg.getBoundingClientRect();
+    const vb = svg.viewBox.baseVal;
+    const sx = (clientX - rect.left) / rect.width * vb.width + vb.x;
+    const sy = (clientY - rect.top) / rect.height * vb.height + vb.y;
+    return { x: (sx - view.x) / view.scale, y: (sy - view.y) / view.scale };
+  }
+
+  $("#canvasWrap").addEventListener("click", (e) => {
+    if (placeMode) {
+      const pt = screenToWorld(e.clientX, e.clientY);
+      const p = { id: uid("p"), x: Math.round(pt.x), y: Math.round(pt.y), gender: placeMode, deceased: false, isIndex: state.people.length === 0, name: "", birthYear: "", deathYear: "", profession: "", diagnoses: [], origin: "", religion: "", notes: "" };
+      state.people.push(p);
+      pushHistory(); render(); select("person", p.id); autosave();
+      setPlaceMode(null);
+      return;
+    }
+    if (noteMode) {
+      toast("Bitte klicke eine Person oder Verbindung an, um eine Notiz anzuheften.");
+      return;
+    }
+    select(null);
+  });
+
+  function onPersonClick(p) {
+    if (connectMode) {
+      handleConnectPick(p.id);
+      return;
+    }
+    if (householdMode) {
+      if (!householdPick.includes(p.id)) householdPick.push(p.id);
+      else householdPick = householdPick.filter(id => id !== p.id);
+      render();
+      highlightHouseholdPick();
+      return;
+    }
+    if (noteMode) {
+      openNoteEditor("person", p.id);
+      setNoteMode(false);
+      return;
+    }
+    select("person", p.id);
+  }
+
+  function highlightHouseholdPick() {
+    householdPick.forEach(id => {
+      const node = svg.querySelector(`[data-person="${id}"] g > *:last-child`);
+    });
+  }
+
+  /* ───────────────────────── Interaction: dragging ───────────────────────── */
+  function onPersonMouseDown(e, p) {
+    if (placeMode || connectMode || householdMode || noteMode) return;
+    e.stopPropagation();
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    const start = screenToWorld(clientX, clientY);
+    dragging = { id: p.id, offX: p.x - start.x, offY: p.y - start.y, moved: false };
+    window.addEventListener("mousemove", onDragMove);
+    window.addEventListener("mouseup", onDragUp);
+    window.addEventListener("touchmove", onDragMove, { passive: false });
+    window.addEventListener("touchend", onDragUp);
+  }
+  function onDragMove(e) {
+    if (!dragging) return;
+    if (e.touches) e.preventDefault();
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    const pt = screenToWorld(clientX, clientY);
+    const p = personById(dragging.id);
+    if (!p) return;
+    p.x = Math.round(pt.x + dragging.offX);
+    p.y = Math.round(pt.y + dragging.offY);
+    dragging.moved = true;
+    render();
+  }
+  function onDragUp() {
+    window.removeEventListener("mousemove", onDragMove);
+    window.removeEventListener("mouseup", onDragUp);
+    window.removeEventListener("touchmove", onDragMove);
+    window.removeEventListener("touchend", onDragUp);
+    if (dragging && dragging.moved) { pushHistory(); autosave(); }
+    dragging = null;
+  }
+
+  /* pan */
+  $("#canvasWrap").addEventListener("mousedown", (e) => {
+    if (e.target.closest("[data-person]") || e.target.closest("[data-rel]") || e.target.closest("[data-note]") || e.target.closest("[data-household]")) return;
+    if (placeMode || noteMode) return;
+    panDrag = { x: e.clientX, y: e.clientY, vx: view.x, vy: view.y };
+    $("#canvasWrap").classList.add("panning");
+  });
+  window.addEventListener("mousemove", (e) => {
+    if (!panDrag) return;
+    view.x = panDrag.vx + (e.clientX - panDrag.x);
+    view.y = panDrag.vy + (e.clientY - panDrag.y);
+    render();
+  });
+  window.addEventListener("mouseup", () => { panDrag = null; $("#canvasWrap").classList.remove("panning"); });
+
+  $("#canvasWrap").addEventListener("wheel", (e) => {
+    e.preventDefault();
+    const delta = -e.deltaY * 0.0016;
+    zoomAt(e.clientX, e.clientY, delta);
+  }, { passive: false });
+
+  function zoomAt(clientX, clientY, delta) {
+    const rect = svg.getBoundingClientRect();
+    const vb = svg.viewBox.baseVal;
+    const sx = (clientX - rect.left) / rect.width * vb.width + vb.x;
+    const sy = (clientY - rect.top) / rect.height * vb.height + vb.y;
+    const wx = (sx - view.x) / view.scale, wy = (sy - view.y) / view.scale;
+    view.scale = Math.min(2.4, Math.max(0.28, view.scale * (1 + delta)));
+    view.x = sx - wx * view.scale;
+    view.y = sy - wy * view.scale;
+    render();
+  }
+  function updateZoomReadout() { $("#zoomReadout").textContent = Math.round(view.scale * 100) + "%"; }
+
+  /* ───────────────────────── Place mode UI ───────────────────────── */
+  function setPlaceMode(g) {
+    placeMode = g;
+    $all(".pal-btn[data-place]").forEach(b => b.classList.toggle("active", b.dataset.place === g));
+    $("#canvasWrap").classList.toggle("mode-place", !!g);
+    if (g) showHint("Klicke auf die Zeichenfläche, um „" + GENDERS[g] + "“ zu platzieren.", () => setPlaceMode(null));
+    else if (!connectMode && !householdMode && !noteMode) hideHint();
+  }
+  $all(".pal-btn[data-place]").forEach(b => b.addEventListener("click", () => setPlaceMode(placeMode === b.dataset.place ? null : b.dataset.place)));
+
+  function showHint(text, onCancel) {
+    $("#hintText").textContent = text;
+    $("#hintBar").hidden = false;
+    $("#hintCancel").onclick = onCancel;
+  }
+  function hideHint() { $("#hintBar").hidden = true; }
+
+  /* ───────────────────────── Connect mode ───────────────────────── */
+  $all(".rel-item[data-connect]").forEach(b => b.addEventListener("click", () => openConnectPicker(b.dataset.connect)));
+
+  function openConnectPicker(kind) {
+    const opts = kind === "partner" ? PARTNER_TYPES : kind === "parentchild" ? PARENTCHILD_TYPES : EMOTIONAL_TYPES;
+    const title = kind === "partner" ? "Partnerschaft" : kind === "parentchild" ? "Eltern–Kind-Beziehung" : "Beziehungsqualität";
+    openModal(title, "Art der Verbindung wählen", opts.map(o => ({
+      label: o.label, sub: o.hint || "", swatch: connectSwatch(kind, o.id),
+      onPick: () => startConnect(kind, o.id)
+    })));
+  }
+  function connectSwatch(kind, id) {
+    const svgEl = el("svg", { class: "sw", viewBox: "0 0 26 12", width: 26, height: 12 });
+    if (kind === "partner") {
+      const dash = id === "unmarried" ? "7 5" : id === "engaged" ? "2 3" : "";
+      svgEl.appendChild(el("line", { x1: 1, y1: 6, x2: 25, y2: 6, stroke: "currentColor", "stroke-width": 2, "stroke-dasharray": dash }));
+      if (id === "separated") svgEl.appendChild(el("line", { x1: 10, y1: 1, x2: 16, y2: 11, stroke: "currentColor", "stroke-width": 1.6 }));
+      if (id === "divorced") { svgEl.appendChild(el("line", { x1: 8, y1: 1, x2: 12, y2: 11, stroke: "currentColor", "stroke-width": 1.6 })); svgEl.appendChild(el("line", { x1: 14, y1: 1, x2: 18, y2: 11, stroke: "currentColor", "stroke-width": 1.6 })); }
+    } else if (kind === "parentchild") {
+      svgEl.appendChild(el("line", { x1: 13, y1: 0, x2: 13, y2: 12, stroke: "currentColor", "stroke-width": 2, "stroke-dasharray": id === "biological" ? "" : "5 4" }));
+    } else {
+      const style = EMO_STYLE[id];
+      for (let i = 0; i < style.n; i++) {
+        const off = (i - (style.n-1)/2) * 3;
+        const d = style.wave ? wavePath(1, 6+off, 25, 6+off, style.waveAmp*0.55) : `M 1 ${6+off} L 25 ${6+off}`;
+        svgEl.appendChild(el("path", { d, fill: "none", stroke: id === "abuse" ? "var(--danger)" : "currentColor", "stroke-width": style.bold ? 2.4 : 1.6, "stroke-dasharray": style.dash }));
+      }
+      if (style.fence) { svgEl.appendChild(el("line", { x1: 11, y1: 1, x2: 11, y2: 11, stroke: "currentColor", "stroke-width": 1.6 })); svgEl.appendChild(el("line", { x1: 15, y1: 1, x2: 15, y2: 11, stroke: "currentColor", "stroke-width": 1.6 })); }
+    }
+    return svgEl;
+  }
+
+  function startConnect(kind, subtype) {
+    connectMode = { kind, subtype, first: null };
+    closeModal();
+    if (kind === "parentchild") {
+      showHint("Eltern–Kind: Klicke zuerst einen Elternteil (danach ggf. den zweiten Elternteil), dann das Kind. Esc = fertig/abbrechen.", () => setConnectMode(null));
+      connectMode.parents = [];
+    } else {
+      showHint("Klicke die erste Person an.", () => setConnectMode(null));
+    }
+  }
+  function setConnectMode(v) { connectMode = v; if (!v) hideHint(); }
+
+  function handleConnectPick(personId) {
+    if (connectMode.kind === "parentchild") {
+      if (!connectMode.child && connectMode.parents.length < (connectMode.wantSecondParent ? 2 : 1) && !connectMode.choosingChild) {
+        if (connectMode.parents.includes(personId)) return;
+        connectMode.parents.push(personId);
+        if (connectMode.parents.length === 1) {
+          showHint("Optional: zweiten Elternteil klicken, oder direkt das Kind klicken.", () => setConnectMode(null));
+          connectMode.choosingChild = "maybe";
+        } else {
+          connectMode.choosingChild = true;
+          showHint("Jetzt das Kind klicken.", () => setConnectMode(null));
+        }
+        return;
+      }
+      if (connectMode.choosingChild === "maybe") {
+        // second click after first parent: could be 2nd parent or child — ambiguous, treat as child if not adjacent partner
+        connectMode.choosingChild = true;
+      }
+      if (connectMode.parents.includes(personId)) return;
+      const rel = { id: uid("r"), type: "parentchild", subtype: connectMode.subtype, parentIds: connectMode.parents.slice(), childId: personId };
+      state.relationships.push(rel);
+      pushHistory(); render(); autosave();
+      toast("Eltern–Kind-Verbindung erstellt.");
+      setConnectMode(null);
+      return;
+    }
+    if (!connectMode.first) {
+      connectMode.first = personId;
+      showHint("Klicke die zweite Person an.", () => setConnectMode(null));
+      return;
+    }
+    if (connectMode.first === personId) return;
+    const order = connectMode.kind === "partner" ? partnerLinksForPair(connectMode.first, personId).length : 0;
+    const rel = { id: uid("r"), type: connectMode.kind, subtype: connectMode.subtype, from: connectMode.first, to: personId, year: "", order };
+    state.relationships.push(rel);
+    pushHistory(); render(); select("rel", rel.id); autosave();
+    toast((connectMode.kind === "partner" ? "Partnerschaft" : "Beziehung") + " erstellt.");
+    setConnectMode(null);
+  }
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") {
+      if (wiz) { closeWizard(); return; }
+      setPlaceMode(null); setConnectMode(null); setHouseholdMode(false); setNoteMode(false); closeModal();
+    }
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z" && !e.shiftKey) { e.preventDefault(); undo(); }
+    if ((e.ctrlKey || e.metaKey) && (e.key.toLowerCase() === "y" || (e.key.toLowerCase() === "z" && e.shiftKey))) { e.preventDefault(); redo(); }
+    if (e.key === "Delete" || e.key === "Backspace") {
+      if (selection && !isTypingTarget(e.target)) { e.preventDefault(); deleteSelection(); }
+    }
+  });
+  function isTypingTarget(t) { return t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA"); }
+
+  /* ───────────────────────── Household mode ───────────────────────── */
+  $("#toolHousehold").addEventListener("click", () => setHouseholdMode(!householdMode));
+  function setHouseholdMode(v) {
+    householdMode = v; householdPick = [];
+    $("#toolHousehold").classList.toggle("active", v);
+    if (v) showHint("Klicke alle Mitglieder eines Haushalts an, dann „Fertig“.", finishHousehold);
+    else hideHint();
+  }
+  function finishHousehold() {
+    if (householdPick.length >= 2) {
+      state.households.push({ id: uid("h"), memberIds: householdPick.slice(), label: "" });
+      pushHistory(); render(); autosave();
+      toast("Haushalt markiert.");
+    }
+    setHouseholdMode(false);
+  }
+  // override hint cancel button contextually when household mode active
+  const origHintCancelHandlerSetter = showHint;
+
+  /* ───────────────────────── Note mode ───────────────────────── */
+  $("#toolNote").addEventListener("click", () => setNoteMode(!noteMode));
+  function setNoteMode(v) {
+    noteMode = v;
+    $("#toolNote").classList.toggle("active", v);
+    if (v) showHint("Klicke eine Person oder eine Verbindungslinie an, um ein Ereignis anzuheften.", () => setNoteMode(false));
+    else hideHint();
+  }
+
+  /* click on relationship lines also needs note-mode support */
+  svg.addEventListener("click", (e) => {
+    const relEl = e.target.closest("[data-rel]");
+    if (noteMode && relEl) {
+      e.stopPropagation();
+      openNoteEditor("relationship", relEl.getAttribute("data-rel"));
+      setNoteMode(false);
+    }
+  }, true);
+
+  /* ───────────────────────── Modal ───────────────────────── */
+  function openModal(title, sub, options) {
+    $("#modalTitle").textContent = title;
+    $("#modalSub").textContent = sub;
+    const body = $("#modalBody");
+    body.innerHTML = "";
+    options.forEach(o => {
+      const btn = document.createElement("button");
+      btn.className = "modal-opt";
+      const swWrap = document.createElement("span"); swWrap.className = "sw"; if (o.swatch) swWrap.appendChild(o.swatch);
+      const lbl = document.createElement("span"); lbl.className = "lbl";
+      const b = document.createElement("b"); b.textContent = o.label;
+      lbl.appendChild(b);
+      if (o.sub) { const s = document.createElement("span"); s.textContent = o.sub; lbl.appendChild(s); }
+      btn.appendChild(swWrap); btn.appendChild(lbl);
+      btn.addEventListener("click", o.onPick);
+      body.appendChild(btn);
+    });
+    $("#modalBackdrop").hidden = false;
+  }
+  function closeModal() { $("#modalBackdrop").hidden = true; }
+  $("#modalCancelBtn").addEventListener("click", closeModal);
+  $("#modalBackdrop").addEventListener("click", (e) => { if (e.target === $("#modalBackdrop")) closeModal(); });
+
+  /* ───────────────────────── Selection + properties panel ───────────────────────── */
+  function select(type, id) {
+    selection = type ? { type, id } : null;
+    render();
+    renderProps();
+  }
+
+  function deleteSelection() {
+    if (!selection) return;
+    if (selection.type === "person") {
+      state.relationships = state.relationships.filter(r => {
+        if (r.type === "parentchild") return r.childId !== selection.id && !(r.parentIds||[]).includes(selection.id);
+        return r.from !== selection.id && r.to !== selection.id;
+      });
+      state.households.forEach(h => h.memberIds = h.memberIds.filter(id => id !== selection.id));
+      state.households = state.households.filter(h => h.memberIds.length >= 2);
+      state.notes = state.notes.filter(n => !(n.targetType === "person" && n.targetId === selection.id));
+      state.people = state.people.filter(p => p.id !== selection.id);
+    } else if (selection.type === "rel") {
+      state.notes = state.notes.filter(n => !(n.targetType === "relationship" && n.targetId === selection.id));
+      state.relationships = state.relationships.filter(r => r.id !== selection.id);
+    } else if (selection.type === "household") {
+      state.households = state.households.filter(h => h.id !== selection.id);
+    } else if (selection.type === "note") {
+      state.notes = state.notes.filter(n => n.id !== selection.id);
+    }
+    selection = null;
+    pushHistory(); render(); renderProps(); autosave();
+    toast("Gelöscht.");
+  }
+
+  function field(labelTxt, inputNode) {
+    const wrap = document.createElement("div"); wrap.className = "field";
+    const l = document.createElement("label"); l.textContent = labelTxt;
+    wrap.appendChild(l); wrap.appendChild(inputNode);
+    return wrap;
+  }
+  function textInput(value, onInput, placeholder) {
+    const i = document.createElement("input"); i.type = "text"; i.value = value || ""; if (placeholder) i.placeholder = placeholder;
+    i.addEventListener("input", () => onInput(i.value));
+    i.addEventListener("change", () => { pushHistory(); autosave(); });
+    return i;
+  }
+  function numInput(value, onInput, placeholder) {
+    const i = document.createElement("input"); i.type = "text"; i.inputMode = "numeric"; i.value = value || ""; if (placeholder) i.placeholder = placeholder;
+    i.addEventListener("input", () => onInput(i.value.replace(/[^0-9]/g, "")));
+    i.addEventListener("change", () => { pushHistory(); autosave(); render(); });
+    return i;
+  }
+  function textArea(value, onInput) {
+    const i = document.createElement("textarea"); i.value = value || "";
+    i.addEventListener("input", () => onInput(i.value));
+    i.addEventListener("change", () => { pushHistory(); autosave(); });
+    return i;
+  }
+  function selectInput(value, options, onChange) {
+    const s = document.createElement("select");
+    options.forEach(o => { const op = document.createElement("option"); op.value = o.id; op.textContent = o.label; if (o.id === value) op.selected = true; s.appendChild(op); });
+    s.addEventListener("change", () => { onChange(s.value); pushHistory(); render(); renderProps(); autosave(); });
+    return s;
+  }
+  function checkField(labelTxt, checked, onChange) {
+    const wrap = document.createElement("label"); wrap.className = "check-row";
+    const i = document.createElement("input"); i.type = "checkbox"; i.checked = checked;
+    i.addEventListener("change", () => { onChange(i.checked); pushHistory(); render(); renderProps(); autosave(); });
+    wrap.appendChild(i); wrap.appendChild(document.createTextNode(labelTxt));
+    return wrap;
+  }
+
+  function renderProps() {
+    const panel = $("#props");
+    if (!selection) { panel.hidden = true; return; }
+    panel.hidden = false;
+    panel.innerHTML = "";
+    const head = document.createElement("div"); head.className = "props-head";
+    const h2 = document.createElement("h2");
+    const closeBtn = document.createElement("button"); closeBtn.className = "props-close"; closeBtn.textContent = "✕"; closeBtn.setAttribute("aria-label","Schließen");
+    closeBtn.addEventListener("click", () => select(null));
+    head.appendChild(h2); head.appendChild(closeBtn);
+    const body = document.createElement("div"); body.className = "props-body";
+    const footer = document.createElement("div"); footer.className = "props-footer";
+    const delBtn = document.createElement("button"); delBtn.className = "danger-btn"; delBtn.textContent = "Element löschen";
+    delBtn.addEventListener("click", deleteSelection);
+    footer.appendChild(delBtn);
+
+    if (selection.type === "person") {
+      const p = personById(selection.id); if (!p) { panel.hidden = true; return; }
+      h2.textContent = GENDERS[p.gender] + (p.isIndex ? " · Indexperson" : "");
+      body.appendChild(field("Name / Initialen", textInput(p.name, v => p.name = v, "z. B. C.S.")));
+      const row = document.createElement("div"); row.className = "field-row";
+      row.appendChild(field("Geburtsjahr", numInput(p.birthYear, v => p.birthYear = v, "1985")));
+      row.appendChild(field("Todesjahr", numInput(p.deathYear, v => p.deathYear = v, "—")));
+      body.appendChild(row);
+      body.appendChild(field("Geschlecht", selectInput(p.gender, [{id:"m",label:"Mann"},{id:"f",label:"Frau"},{id:"d",label:"Divers"},{id:"u",label:"Unbekannt"}], v => p.gender = v)));
+      body.appendChild(checkField("Verstorben", p.deceased, v => p.deceased = v));
+      body.appendChild(checkField("Indexperson (Klient:in)", p.isIndex, v => { if (v) state.people.forEach(x => x.isIndex = false); p.isIndex = v; }));
+      body.appendChild(field("Beruf", textInput(p.profession, v => p.profession = v)));
+      body.appendChild(field("Herkunft / Migrationshintergrund", textInput(p.origin, v => p.origin = v)));
+      body.appendChild(field("Religion", textInput(p.religion, v => p.religion = v)));
+
+      const diagWrap = document.createElement("div"); diagWrap.className = "field";
+      diagWrap.appendChild(Object.assign(document.createElement("label"), { textContent: "Diagnosen / Erkrankungen" }));
+      const tagRow = document.createElement("div"); tagRow.className = "tag-input-row";
+      const tagIn = document.createElement("input"); tagIn.type = "text"; tagIn.placeholder = "Begriff eingeben, Enter drücken";
+      const tagAdd = document.createElement("button"); tagAdd.className = "tag-add-btn"; tagAdd.type = "button"; tagAdd.textContent = "+";
+      function addTag() { const v = tagIn.value.trim(); if (!v) return; p.diagnoses = p.diagnoses || []; p.diagnoses.push(v); tagIn.value = ""; pushHistory(); render(); renderProps(); autosave(); }
+      tagAdd.addEventListener("click", addTag);
+      tagIn.addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); addTag(); } });
+      tagRow.appendChild(tagIn); tagRow.appendChild(tagAdd);
+      diagWrap.appendChild(tagRow);
+      const tags = document.createElement("div"); tags.className = "tags";
+      (p.diagnoses||[]).forEach((t, i) => {
+        const chip = document.createElement("span"); chip.className = "tag";
+        chip.appendChild(document.createTextNode(t));
+        const rm = document.createElement("button"); rm.textContent = "✕";
+        rm.addEventListener("click", () => { p.diagnoses.splice(i,1); pushHistory(); render(); renderProps(); autosave(); });
+        chip.appendChild(rm);
+        tags.appendChild(chip);
+      });
+      diagWrap.appendChild(tags);
+      body.appendChild(diagWrap);
+
+      body.appendChild(field("Notizen", textArea(p.notes, v => p.notes = v)));
+      renderNotesFor(body, "person", p.id);
+    } else if (selection.type === "rel") {
+      const r = relById(selection.id); if (!r) { panel.hidden = true; return; }
+      if (r.type === "partner") {
+        h2.textContent = "Partnerschaft";
+        body.appendChild(field("Art", selectInput(r.subtype, PARTNER_TYPES, v => r.subtype = v)));
+        body.appendChild(field("Jahr", numInput(r.year, v => r.year = v, "z. B. 1998")));
+      } else if (r.type === "parentchild") {
+        h2.textContent = "Eltern–Kind";
+        body.appendChild(field("Art", selectInput(r.subtype, PARENTCHILD_TYPES, v => r.subtype = v)));
+      } else {
+        h2.textContent = "Beziehungsqualität";
+        body.appendChild(field("Art", selectInput(r.subtype, EMOTIONAL_TYPES, v => r.subtype = v)));
+      }
+      renderNotesFor(body, "relationship", r.id);
+    } else if (selection.type === "household") {
+      const h = state.households.find(x => x.id === selection.id); if (!h) { panel.hidden = true; return; }
+      h2.textContent = "Haushalt";
+      body.appendChild(field("Bezeichnung", textInput(h.label, v => h.label = v, "z. B. mütterlicher Haushalt")));
+      const list = document.createElement("div"); list.style.cssText = "font-size:11.5px;color:var(--ink-soft);line-height:1.7;";
+      list.textContent = "Mitglieder: " + h.memberIds.map(id => (personById(id)||{}).name || "—").join(", ");
+      body.appendChild(list);
+    } else if (selection.type === "note") {
+      const n = state.notes.find(x => x.id === selection.id); if (!n) { panel.hidden = true; return; }
+      h2.textContent = "Ereignis-Notiz";
+      body.appendChild(field("Jahr", numInput(n.year, v => n.year = v)));
+      body.appendChild(field("Beschreibung", textArea(n.text, v => n.text = v)));
+    }
+
+    panel.appendChild(head); panel.appendChild(body); panel.appendChild(footer);
+  }
+
+  function renderNotesFor(body, targetType, targetId) {
+    const relevant = state.notes.filter(n => n.targetType === targetType && n.targetId === targetId);
+    if (!relevant.length) return;
+    const wrap = document.createElement("div"); wrap.className = "field";
+    wrap.appendChild(Object.assign(document.createElement("label"), { textContent: "Ereignis-Notizen" }));
+    const list = document.createElement("div"); list.className = "notes-list";
+    relevant.forEach(n => {
+      const chip = document.createElement("div"); chip.className = "note-chip";
+      const y = document.createElement("span"); y.className = "y mono"; y.textContent = n.year || "—";
+      const t = document.createElement("span"); t.textContent = n.text;
+      const rm = document.createElement("button"); rm.textContent = "✕";
+      rm.addEventListener("click", () => { state.notes = state.notes.filter(x => x.id !== n.id); pushHistory(); render(); renderProps(); autosave(); });
+      chip.appendChild(y); chip.appendChild(t); chip.appendChild(rm);
+      list.appendChild(chip);
+    });
+    wrap.appendChild(list);
+    body.appendChild(wrap);
+  }
+
+  function openNoteEditor(targetType, targetId) {
+    const n = { id: uid("n"), targetId, targetType, year: "", text: "" };
+    state.notes.push(n);
+    pushHistory(); render(); select("note", n.id); autosave();
+  }
+
+  /* ───────────────────────── Legend ───────────────────────── */
+  function buildLegend() {
+    const body = $("#legendBody"); body.innerHTML = "";
+    function section(title, rows) {
+      const s = document.createElement("div"); s.className = "legend-sec";
+      s.appendChild(Object.assign(document.createElement("h3"), { textContent: title }));
+      rows.forEach(r => s.appendChild(r));
+      body.appendChild(s);
+    }
+    function row(swatchNode, label) {
+      const r = document.createElement("div"); r.className = "legend-row";
+      r.appendChild(swatchNode); r.appendChild(document.createTextNode(label));
+      return r;
+    }
+    function shapeSwatch(gender) {
+      const svgEl = el("svg", { viewBox: "0 0 28 28", width: 22, height: 22 });
+      const dummy = { gender };
+      const s = symbolShape.call(null, dummy, false);
+      // recolor for legend (currentColor via CSS var not inherited outside app context reliably) -> force ink
+      Array.from(s.querySelectorAll("*")).forEach(node => { if (node.getAttribute("stroke")) node.setAttribute("stroke", "var(--ink-soft)"); if (node.getAttribute("fill") === "var(--paper-raised)") node.setAttribute("fill", "none"); });
+      s.setAttribute("transform", "translate(14 14) scale(0.42)");
+      svgEl.appendChild(s);
+      return svgEl;
+    }
+    section("Personen", [
+      row(shapeSwatch("m"), "Mann"), row(shapeSwatch("f"), "Frau"), row(shapeSwatch("d"), "Divers / nicht-binär"), row(shapeSwatch("u"), "Geschlecht unbekannt"),
+      row((() => { const s = el("svg", { viewBox: "0 0 28 28", width: 22, height: 22 }); s.appendChild(el("line", { x1: 6, y1: 6, x2: 22, y2: 22, stroke: "var(--ink-soft)", "stroke-width": 2 })); s.appendChild(el("line", { x1: 6, y1: 22, x2: 22, y2: 6, stroke: "var(--ink-soft)", "stroke-width": 2 })); return s; })(), "Verstorben (diagonales Kreuz)"),
+      row((() => { const s = el("svg", { viewBox: "0 0 28 28", width: 22, height: 22 }); s.appendChild(el("rect", { x: 5, y: 5, width: 18, height: 18, fill: "none", stroke: "var(--accent)", "stroke-width": 1.6 })); return s; })(), "Doppelte Umrandung = Indexperson"),
+    ]);
+    section("Partnerschaft", PARTNER_TYPES.map(t => row(connectSwatchLegend("partner", t.id), t.label + (t.hint ? " — " + t.hint : ""))));
+    section("Eltern–Kind", PARENTCHILD_TYPES.map(t => row(connectSwatchLegend("parentchild", t.id), t.label)));
+    section("Beziehungsqualität", EMOTIONAL_TYPES.map(t => row(connectSwatchLegend("emotional", t.id), t.label)));
+    section("Weitere Zeichen", [
+      row((() => { const s = el("svg", { viewBox: "0 0 28 14", width: 26, height: 14 }); s.appendChild(el("rect", { x:1, y:1, width:26, height:12, rx:4, fill:"none", stroke:"var(--line-strong)", "stroke-width":1.4, "stroke-dasharray":"4 3" })); return s; })(), "Gestrichelte Umrandung = gemeinsamer Haushalt"),
+      row((() => { const s = el("svg", { viewBox: "0 0 28 28", width: 22, height: 22 }); s.appendChild(el("circle", { cx:14, cy:14, r:8, fill:"var(--accent)", opacity:0.14 })); s.appendChild(el("text", { x:14, y:18, "text-anchor":"middle", "font-size":11, fill:"var(--accent)", "font-weight":700, text:"!" })); return s; })(), "Ereignis-Notiz (klickbar)"),
+    ]);
+  }
+  function connectSwatchLegend(kind, id) {
+    const s = connectSwatch(kind, id);
+    s.setAttribute("width", "30"); s.setAttribute("height", "14");
+    return s;
+  }
+
+  $("#btnLegend").addEventListener("click", () => { buildLegend(); $("#legend").hidden = !$("#legend").hidden; });
+  $("#btnLegendClose").addEventListener("click", () => $("#legend").hidden = true);
+
+  /* ───────────────────────── Geführter Fragebogen (Wizard) ───────────────────────── */
+  const GENDER_OPTS = [{ id: "m", label: "Mann" }, { id: "f", label: "Frau" }, { id: "d", label: "Divers" }, { id: "u", label: "Unbekannt" }];
+  let wiz = null;
+
+  function blankPerson(gender) { return { gender: gender || "u", name: "", birthYear: "", deceased: false, deathYear: "" }; }
+  function blankPartnerEntry() { return { gender: "u", name: "", birthYear: "", deceased: false, deathYear: "", relType: "married", relYear: "" }; }
+  function blankSideGroup() { return { include: false, mode: "two", a: blankPerson("f"), b: blankPerson("m"), relType: "married", relYear: "" }; }
+
+  function newWizardSession() {
+    return {
+      stepIndex: 0,
+      data: {
+        index: { name: "", gender: "f", birthYear: "" },
+        parentsMode: "two",
+        parentA: blankPerson("f"), parentB: blankPerson("m"),
+        parentsRelType: "married", parentsRelYear: "",
+        siblings: [],
+        gpA: blankSideGroup(), gpB: blankSideGroup(),
+        hasPartners: false, partners: [],
+        children: [],
+        householdIds: [], _householdTouched: false,
+        pairsQuality: {},
+        externals: [],
+      },
+      ws: { people: [], relationships: [], households: [] },
+      roles: { indexId: null, parentIds: [], siblingIds: [], gpIds: { A: [], B: [] }, partnerIds: [], childIds: [], externalIds: [] },
+      roleWord: {},
+    };
+  }
+
+  function indexLabel() { return (wiz.data.index.name || "").trim() || "der Indexperson"; }
+  function roleWord(kind, gender) {
+    const table = {
+      parent: { f: "Mutter", m: "Vater", d: "Elternteil", u: "Elternteil" },
+      sibling: { f: "Schwester", m: "Bruder", d: "Geschwisterteil", u: "Geschwisterteil" },
+      partner: { f: "Partnerin", m: "Partner", d: "Partner:in", u: "Partner:in" },
+      child: { f: "Tochter", m: "Sohn", d: "Kind", u: "Kind" },
+      grandparent: { f: "Großmutter", m: "Großvater", d: "Großelternteil", u: "Großelternteil" },
+    };
+    return (table[kind] && table[kind][gender]) || kind;
+  }
+  function makePerson(id, src, extra) {
+    return Object.assign({
+      id, x: 0, y: 0, gender: src.gender || "u", deceased: !!src.deceased, isIndex: false,
+      name: src.name || "", birthYear: src.birthYear || "", deathYear: src.deathYear || "",
+      profession: "", diagnoses: [], origin: "", religion: "", notes: src.notes || "",
+    }, extra || {});
+  }
+  function labelForWs(id) {
+    const p = wiz.ws.people.find(x => x.id === id);
+    if (!p) return "?";
+    const word = wiz.roleWord[id] || "";
+    return p.name ? `${word} (${p.name})` : word;
+  }
+  function linkParentChild(parentIds, childId, subtype, tag) {
+    wiz.ws.relationships.push({ id: uid("r"), type: "parentchild", subtype, parentIds: parentIds.slice(), childId, _wizStep: tag });
+  }
+  function wizPurge(key) {
+    wiz.ws.people = wiz.ws.people.filter(p => p._wizStep !== key);
+    wiz.ws.relationships = wiz.ws.relationships.filter(r => r._wizStep !== key);
+    wiz.ws.households = wiz.ws.households.filter(h => h._wizStep !== key);
+  }
+  function resizeArray(arr, n, factory) {
+    while (arr.length < n) arr.push(factory());
+    while (arr.length > n) arr.pop();
+  }
+  function byYear(p) { const y = parseInt(p && p.birthYear, 10); return isFinite(y) ? y : 9999; }
+
+  /* ── small form builders (wizard-local, no live-state side effects) ── */
+  function mkDiv(cls) { const d = document.createElement("div"); d.className = cls; return d; }
+  function wField(labelTxt, node, span2) {
+    const wrap = mkDiv("field" + (span2 ? " field-span2" : ""));
+    const l = document.createElement("label"); l.textContent = labelTxt;
+    wrap.appendChild(l); wrap.appendChild(node);
+    return wrap;
+  }
+  function wText(value, onInput, placeholder) {
+    const i = document.createElement("input"); i.type = "text"; i.value = value || ""; if (placeholder) i.placeholder = placeholder;
+    i.addEventListener("input", () => onInput(i.value));
+    return i;
+  }
+  function wNum(value, onInput, placeholder) {
+    const i = document.createElement("input"); i.type = "text"; i.inputMode = "numeric"; i.value = value || ""; if (placeholder) i.placeholder = placeholder;
+    i.addEventListener("input", () => onInput(i.value.replace(/[^0-9]/g, "")));
+    return i;
+  }
+  function wSelect(value, options, onChange) {
+    const s = document.createElement("select");
+    options.forEach(o => { const op = document.createElement("option"); op.value = o.id; op.textContent = o.label; if (o.id === value) op.selected = true; s.appendChild(op); });
+    s.addEventListener("change", () => onChange(s.value));
+    return s;
+  }
+  function wCheck(labelTxt, checked, onChange) {
+    const wrap = document.createElement("label"); wrap.className = "check-row";
+    const i = document.createElement("input"); i.type = "checkbox"; i.checked = checked;
+    i.addEventListener("change", () => onChange(i.checked));
+    wrap.appendChild(i); wrap.appendChild(document.createTextNode(labelTxt));
+    return wrap;
+  }
+  function choiceGroup(options, value, onPick) {
+    const wrap = mkDiv("wiz-choice-group");
+    options.forEach(o => {
+      const b = document.createElement("button"); b.type = "button";
+      b.className = "wiz-choice" + (o.id === value ? " sel" : "");
+      const dot = mkDiv("dot");
+      const lbl = document.createElement("span");
+      const bEl = document.createElement("b"); bEl.textContent = o.label; bEl.style.display = "block";
+      lbl.appendChild(bEl);
+      if (o.sub) { const s = document.createElement("span"); s.textContent = o.sub; s.style.cssText = "font-size:11px;color:var(--ink-faint);font-weight:400;"; lbl.appendChild(s); }
+      b.appendChild(dot); b.appendChild(lbl);
+      b.addEventListener("click", () => onPick(o.id));
+      wrap.appendChild(b);
+    });
+    return wrap;
+  }
+  function stepperControl(value, min, max, onChange) {
+    const wrap = mkDiv("wiz-stepper");
+    const minus = document.createElement("button"); minus.type = "button"; minus.textContent = "−";
+    const count = document.createElement("span"); count.className = "count"; count.textContent = value;
+    const plus = document.createElement("button"); plus.type = "button"; plus.textContent = "+";
+    minus.disabled = value <= min; plus.disabled = value >= max;
+    minus.addEventListener("click", () => onChange(Math.max(min, value - 1)));
+    plus.addEventListener("click", () => onChange(Math.min(max, value + 1)));
+    wrap.appendChild(minus); wrap.appendChild(count); wrap.appendChild(plus);
+    return wrap;
+  }
+  function personCard(title, obj, extraBuilder, onRemove) {
+    const card = mkDiv("wiz-person-card");
+    const head = mkDiv("wiz-person-card-head");
+    head.appendChild(Object.assign(document.createElement("b"), { textContent: title }));
+    if (onRemove) {
+      const rm = document.createElement("button"); rm.className = "wiz-remove-row"; rm.type = "button"; rm.textContent = "Entfernen";
+      rm.addEventListener("click", onRemove);
+      head.appendChild(rm);
+    }
+    card.appendChild(head);
+    const grid = mkDiv("wiz-person-grid");
+    grid.appendChild(wField("Geschlecht", wSelect(obj.gender, GENDER_OPTS, v => obj.gender = v)));
+    grid.appendChild(wField("Geburtsjahr", wNum(obj.birthYear, v => obj.birthYear = v, "z. B. 1990")));
+    grid.appendChild(wField("Name / Initialen (optional)", wText(obj.name, v => obj.name = v, "optional"), true));
+    grid.appendChild(wCheck("Verstorben", obj.deceased, v => { obj.deceased = v; renderWizStep(); }));
+    if (obj.deceased) grid.appendChild(wField("Todesjahr", wNum(obj.deathYear, v => obj.deathYear = v)));
+    card.appendChild(grid);
+    if (extraBuilder) extraBuilder(card, grid);
+    return card;
+  }
+
+  /* ── step definitions ── */
+  const WIZ_STEPS = [
+    {
+      key: "welcome", title: "Geführter Einstieg", skippable: false,
+      intro: "In wenigen Schritten entsteht ein vollständiges Genogramm — beginnend bei der Indexperson und aufbauend über Eltern, Geschwister, Partnerschaften, Kinder bis zur Beziehungsqualität. Alles lässt sich danach im Editor verfeinern.",
+      render(body) { body.appendChild(Object.assign(document.createElement("p"), { className: "wiz-lead", textContent: "Am Ende jedes Abschnitts kannst du „Weiter“ klicken oder den Abschnitt überspringen. Zurück geht es jederzeit." })); },
+      commit() { return true; },
+    },
+    {
+      key: "index", title: "Indexperson", skippable: false,
+      intro: "Um wen geht es in diesem Genogramm?",
+      render(body) {
+        const grid = mkDiv("wiz-person-grid");
+        grid.appendChild(wField("Name / Initialen", wText(wiz.data.index.name, v => wiz.data.index.name = v, "z. B. C.S."), true));
+        grid.appendChild(wField("Geschlecht", wSelect(wiz.data.index.gender, GENDER_OPTS, v => wiz.data.index.gender = v)));
+        grid.appendChild(wField("Geburtsjahr", wNum(wiz.data.index.birthYear, v => wiz.data.index.birthYear = v, "z. B. 1998")));
+        body.appendChild(grid);
+      },
+      commit() {
+        wizPurge(this.key);
+        const id = uid("p");
+        wiz.ws.people.push(makePerson(id, wiz.data.index, { isIndex: true, _wizStep: this.key }));
+        wiz.roles.indexId = id;
+        wiz.roleWord[id] = "Indexperson";
+        return true;
+      },
+    },
+    {
+      key: "parents", title: "Eltern", skippable: true,
+      intro() { return `Sollen die Eltern von ${indexLabel()} erfasst werden?`; },
+      onSkip() { wiz.data.parentsMode = "none"; },
+      render(body) {
+        body.appendChild(choiceGroup([
+          { id: "two", label: "Beide Eltern", sub: "zwei Elternteile erfassen" },
+          { id: "one", label: "Ein Elternteil", sub: "nur eine Bezugsperson bekannt" },
+          { id: "none", label: "Keine / unbekannt", sub: "Eltern nicht erfassen" },
+        ], wiz.data.parentsMode, v => { wiz.data.parentsMode = v; renderWizStep(); }));
+        if (wiz.data.parentsMode !== "none") {
+          body.appendChild(personCard("Elternteil 1", wiz.data.parentA));
+          if (wiz.data.parentsMode === "two") {
+            body.appendChild(personCard("Elternteil 2", wiz.data.parentB));
+            const row = mkDiv("field-row");
+            row.appendChild(wField("Beziehung der Eltern zueinander", wSelect(wiz.data.parentsRelType, PARTNER_TYPES, v => wiz.data.parentsRelType = v)));
+            row.appendChild(wField("Jahr", wNum(wiz.data.parentsRelYear, v => wiz.data.parentsRelYear = v, "z. B. 1990")));
+            body.appendChild(row);
+          }
+        }
+      },
+      commit() {
+        wizPurge(this.key);
+        wiz.roles.parentIds = [];
+        if (wiz.data.parentsMode === "none") return true;
+        const idA = uid("p");
+        wiz.ws.people.push(makePerson(idA, wiz.data.parentA, { _wizStep: this.key }));
+        wiz.roles.parentIds.push(idA);
+        wiz.roleWord[idA] = roleWord("parent", wiz.data.parentA.gender);
+        if (wiz.data.parentsMode === "two") {
+          const idB = uid("p");
+          wiz.ws.people.push(makePerson(idB, wiz.data.parentB, { _wizStep: this.key }));
+          wiz.roles.parentIds.push(idB);
+          wiz.roleWord[idB] = roleWord("parent", wiz.data.parentB.gender);
+          wiz.ws.relationships.push({ id: uid("r"), type: "partner", subtype: wiz.data.parentsRelType, from: idA, to: idB, year: wiz.data.parentsRelYear, order: 0, _wizStep: this.key });
+        }
+        linkParentChild(wiz.roles.parentIds, wiz.roles.indexId, "biological", this.key);
+        return true;
+      },
+    },
+    {
+      key: "siblings", title: "Geschwister", skippable: true,
+      intro() { return `Wie viele Geschwister hat ${indexLabel()}?`; },
+      onSkip() { wiz.data.siblings = []; },
+      render(body) {
+        body.appendChild(wField("Anzahl Geschwister", stepperControl(wiz.data.siblings.length, 0, 10, n => {
+          resizeArray(wiz.data.siblings, n, () => ({ gender: "u", name: "", birthYear: "", deceased: false, deathYear: "", filiation: "biological" }));
+          renderWizStep();
+        })));
+        if (wiz.data.siblings.length) {
+          const group = mkDiv("wiz-card-group");
+          wiz.data.siblings.forEach((sib, i) => {
+            group.appendChild(personCard(`Geschwister ${i + 1}`, sib, (card, grid) => {
+              if (wiz.data.parentsMode !== "none") grid.appendChild(wField("Abstammung", wSelect(sib.filiation, PARENTCHILD_TYPES, v => sib.filiation = v)));
+            }, () => { wiz.data.siblings.splice(i, 1); renderWizStep(); }));
+          });
+          body.appendChild(group);
+        }
+      },
+      commit() {
+        wizPurge(this.key);
+        wiz.roles.siblingIds = [];
+        wiz.data.siblings.forEach(sib => {
+          const id = uid("p");
+          wiz.ws.people.push(makePerson(id, sib, { _wizStep: this.key }));
+          wiz.roles.siblingIds.push(id);
+          wiz.roleWord[id] = roleWord("sibling", sib.gender);
+          if (wiz.roles.parentIds.length) linkParentChild(wiz.roles.parentIds, id, sib.filiation || "biological", this.key);
+        });
+        return true;
+      },
+    },
+    {
+      key: "grandparents", title: "Großeltern", skippable: true,
+      intro: "Optional: Sollen auch die Großeltern erfasst werden?",
+      applicable: () => wiz.roles.parentIds.length > 0,
+      onSkip() { wiz.data.gpA.include = false; wiz.data.gpB.include = false; },
+      render(body) {
+        wiz.roles.parentIds.forEach((pid, idx) => {
+          const side = idx === 0 ? "A" : "B";
+          const gp = wiz.data["gp" + side];
+          const parentLabel = labelForWs(pid);
+          body.appendChild(wCheck(`Eltern von ${parentLabel} erfassen`, gp.include, v => { gp.include = v; renderWizStep(); }));
+          if (gp.include) {
+            body.appendChild(choiceGroup([
+              { id: "two", label: "Beide Großelternteile" },
+              { id: "one", label: "Nur ein Großelternteil" },
+            ], gp.mode, v => { gp.mode = v; renderWizStep(); }));
+            body.appendChild(personCard(`Großelternteil 1 (${parentLabel})`, gp.a));
+            if (gp.mode === "two") {
+              body.appendChild(personCard(`Großelternteil 2 (${parentLabel})`, gp.b));
+              const row = mkDiv("field-row");
+              row.appendChild(wField("Beziehung zueinander", wSelect(gp.relType, PARTNER_TYPES, v => gp.relType = v)));
+              row.appendChild(wField("Jahr", wNum(gp.relYear, v => gp.relYear = v)));
+              body.appendChild(row);
+            }
+          }
+        });
+      },
+      commit() {
+        wizPurge(this.key);
+        wiz.roles.gpIds = { A: [], B: [] };
+        wiz.roles.parentIds.forEach((pid, idx) => {
+          const side = idx === 0 ? "A" : "B";
+          const gp = wiz.data["gp" + side];
+          if (!gp.include) return;
+          const idA = uid("p");
+          wiz.ws.people.push(makePerson(idA, gp.a, { _wizStep: this.key }));
+          wiz.roles.gpIds[side].push(idA);
+          wiz.roleWord[idA] = roleWord("grandparent", gp.a.gender);
+          const ids = [idA];
+          if (gp.mode === "two") {
+            const idB = uid("p");
+            wiz.ws.people.push(makePerson(idB, gp.b, { _wizStep: this.key }));
+            wiz.roles.gpIds[side].push(idB);
+            wiz.roleWord[idB] = roleWord("grandparent", gp.b.gender);
+            wiz.ws.relationships.push({ id: uid("r"), type: "partner", subtype: gp.relType, from: idA, to: idB, year: gp.relYear, order: 0, _wizStep: this.key });
+            ids.push(idB);
+          }
+          linkParentChild(ids, pid, "biological", this.key);
+        });
+        return true;
+      },
+    },
+    {
+      key: "partners", title: "Partnerschaften", skippable: true,
+      intro() { return `Hat ${indexLabel()} eine aktuelle oder frühere Partnerschaft?`; },
+      onSkip() { wiz.data.hasPartners = false; },
+      render(body) {
+        body.appendChild(choiceGroup([{ id: "yes", label: "Ja" }, { id: "no", label: "Nein" }], wiz.data.hasPartners ? "yes" : "no", v => {
+          wiz.data.hasPartners = v === "yes";
+          if (wiz.data.hasPartners && !wiz.data.partners.length) wiz.data.partners.push(blankPartnerEntry());
+          renderWizStep();
+        }));
+        if (wiz.data.hasPartners) {
+          body.appendChild(wField("Anzahl Partnerschaften (chronologisch, älteste zuerst)", stepperControl(wiz.data.partners.length, 1, 6, n => {
+            resizeArray(wiz.data.partners, n, blankPartnerEntry); renderWizStep();
+          })));
+          const group = mkDiv("wiz-card-group");
+          wiz.data.partners.forEach((pt, i) => {
+            const isLast = i === wiz.data.partners.length - 1;
+            group.appendChild(personCard(`Partner:in ${i + 1}${isLast && wiz.data.partners.length > 1 ? " (aktuell)" : ""}`, pt, (card, grid) => {
+              grid.appendChild(wField("Beziehungsart", wSelect(pt.relType, PARTNER_TYPES, v => pt.relType = v)));
+              grid.appendChild(wField("Jahr", wNum(pt.relYear, v => pt.relYear = v)));
+            }, wiz.data.partners.length > 1 ? () => { wiz.data.partners.splice(i, 1); renderWizStep(); } : null));
+          });
+          body.appendChild(group);
+        }
+      },
+      commit() {
+        wizPurge(this.key);
+        wiz.roles.partnerIds = [];
+        if (!wiz.data.hasPartners) return true;
+        wiz.data.partners.forEach((pt, i) => {
+          const id = uid("p");
+          wiz.ws.people.push(makePerson(id, pt, { _wizStep: this.key }));
+          wiz.roles.partnerIds.push(id);
+          wiz.roleWord[id] = roleWord("partner", pt.gender);
+          wiz.ws.relationships.push({ id: uid("r"), type: "partner", subtype: pt.relType, from: wiz.roles.indexId, to: id, year: pt.relYear, order: i, _wizStep: this.key });
+        });
+        return true;
+      },
+    },
+    {
+      key: "children", title: "Kinder", skippable: true,
+      intro() { return `Wie viele Kinder hat ${indexLabel()}?`; },
+      onSkip() { wiz.data.children = []; },
+      render(body) {
+        body.appendChild(wField("Anzahl Kinder", stepperControl(wiz.data.children.length, 0, 12, n => {
+          resizeArray(wiz.data.children, n, () => ({ gender: "u", name: "", birthYear: "", deceased: false, deathYear: "", filiation: "biological", partnerIdx: wiz.data.partners.length ? 0 : -1 }));
+          renderWizStep();
+        })));
+        if (wiz.data.children.length) {
+          const group = mkDiv("wiz-card-group");
+          wiz.data.children.forEach((ch, i) => {
+            group.appendChild(personCard(`Kind ${i + 1}`, ch, (card, grid) => {
+              grid.appendChild(wField("Abstammung", wSelect(ch.filiation, PARENTCHILD_TYPES, v => ch.filiation = v)));
+              if (wiz.data.hasPartners && wiz.data.partners.length) {
+                const opts = wiz.data.partners.map((pt, pi) => ({ id: String(pi), label: `mit Partner:in ${pi + 1}${pt.name ? " (" + pt.name + ")" : ""}` }));
+                opts.push({ id: "-1", label: "kein zweiter Elternteil erfasst" });
+                grid.appendChild(wField("Gemeinsam mit", wSelect(String(ch.partnerIdx), opts, v => ch.partnerIdx = parseInt(v, 10))));
+              }
+            }, () => { wiz.data.children.splice(i, 1); renderWizStep(); }));
+          });
+          body.appendChild(group);
+        }
+      },
+      commit() {
+        wizPurge(this.key);
+        wiz.roles.childIds = [];
+        wiz.data.children.forEach(ch => {
+          const id = uid("p");
+          wiz.ws.people.push(makePerson(id, ch, { _wizStep: this.key }));
+          wiz.roles.childIds.push(id);
+          wiz.roleWord[id] = roleWord("child", ch.gender);
+          const parentIds = [wiz.roles.indexId];
+          if (ch.partnerIdx != null && ch.partnerIdx >= 0 && wiz.roles.partnerIds[ch.partnerIdx]) parentIds.push(wiz.roles.partnerIds[ch.partnerIdx]);
+          linkParentChild(parentIds, id, ch.filiation || "biological", this.key);
+        });
+        return true;
+      },
+    },
+    {
+      key: "household", title: "Haushalt", skippable: true,
+      intro() { return `Wer lebt aktuell mit ${indexLabel()} in einem gemeinsamen Haushalt?`; },
+      applicable: () => wiz.ws.people.length > 1,
+      onSkip() { wiz.data.householdIds = []; wiz.data._householdTouched = true; },
+      render(body) {
+        if (!wiz.data._householdTouched) {
+          wiz.data.householdIds = [...wiz.roles.partnerIds.slice(0, 1), ...wiz.roles.childIds];
+        }
+        const list = mkDiv("wiz-check-list");
+        const indexRow = document.createElement("label");
+        const cbIndex = document.createElement("input"); cbIndex.type = "checkbox"; cbIndex.checked = true; cbIndex.disabled = true;
+        indexRow.appendChild(cbIndex); indexRow.appendChild(document.createTextNode(labelForWs(wiz.roles.indexId) + " (Indexperson)"));
+        list.appendChild(indexRow);
+        wiz.ws.people.filter(p => p.id !== wiz.roles.indexId).forEach(p => {
+          const row = document.createElement("label");
+          const cb = document.createElement("input"); cb.type = "checkbox";
+          cb.checked = wiz.data.householdIds.includes(p.id);
+          cb.addEventListener("change", () => {
+            wiz.data._householdTouched = true;
+            if (cb.checked) { if (!wiz.data.householdIds.includes(p.id)) wiz.data.householdIds.push(p.id); }
+            else wiz.data.householdIds = wiz.data.householdIds.filter(x => x !== p.id);
+          });
+          row.appendChild(cb); row.appendChild(document.createTextNode(labelForWs(p.id)));
+          list.appendChild(row);
+        });
+        body.appendChild(list);
+      },
+      commit() {
+        wizPurge(this.key);
+        const ids = Array.from(new Set([wiz.roles.indexId, ...wiz.data.householdIds]));
+        if (ids.length >= 2) wiz.ws.households.push({ id: uid("h"), memberIds: ids, label: "", _wizStep: this.key });
+        return true;
+      },
+    },
+    {
+      key: "emotional", title: "Beziehungsqualität", skippable: true,
+      intro() { return `Wie ist die emotionale Beziehung zwischen ${indexLabel()} und den wichtigsten Bezugspersonen? (optional, jederzeit später ergänzbar)`; },
+      applicable: () => wiz.ws.people.length > 1,
+      onSkip() { wiz.data.pairsQuality = {}; },
+      render(body) {
+        const otherIds = [...wiz.roles.parentIds, ...wiz.roles.siblingIds, ...wiz.roles.partnerIds, ...wiz.roles.childIds];
+        if (!otherIds.length) { body.appendChild(Object.assign(document.createElement("p"), { className: "wiz-lead", textContent: "Keine weiteren Personen vorhanden." })); return; }
+        const opts = [{ id: "", label: "— überspringen —" }, ...EMOTIONAL_TYPES];
+        otherIds.forEach(id => {
+          const row = mkDiv("wiz-pair-row");
+          const span = document.createElement("span"); span.textContent = `${indexLabel()} ↔ ${labelForWs(id)}`;
+          row.appendChild(span);
+          row.appendChild(wSelect(wiz.data.pairsQuality[id] || "", opts, v => wiz.data.pairsQuality[id] = v));
+          body.appendChild(row);
+        });
+        body.appendChild(Object.assign(document.createElement("p"), { className: "wiz-note", textContent: "Weitere Beziehungen (z. B. zwischen zwei Geschwistern) lassen sich später direkt im Editor mit dem Werkzeug „Beziehungsqualität…“ ergänzen." }));
+      },
+      commit() {
+        wizPurge(this.key);
+        Object.keys(wiz.data.pairsQuality).forEach(id => {
+          const subtype = wiz.data.pairsQuality[id];
+          if (!subtype) return;
+          wiz.ws.relationships.push({ id: uid("r"), type: "emotional", subtype, from: wiz.roles.indexId, to: id, _wizStep: this.key });
+        });
+        return true;
+      },
+    },
+    {
+      key: "externals", title: "Weitere Bezugspersonen", skippable: true,
+      intro: "Optional: wichtige Personen außerhalb der Kernfamilie — z. B. Pflegefamilie, Patin/Pate, enge Bezugsperson.",
+      onSkip() { wiz.data.externals = []; },
+      render(body) {
+        body.appendChild(wField("Anzahl weiterer Bezugspersonen", stepperControl(wiz.data.externals.length, 0, 8, n => {
+          resizeArray(wiz.data.externals, n, () => ({ gender: "u", name: "", role: "", quality: "connected" }));
+          renderWizStep();
+        })));
+        if (wiz.data.externals.length) {
+          const group = mkDiv("wiz-card-group");
+          wiz.data.externals.forEach((ex, i) => {
+            const card = mkDiv("wiz-person-card");
+            const head = mkDiv("wiz-person-card-head");
+            head.appendChild(Object.assign(document.createElement("b"), { textContent: `Bezugsperson ${i + 1}` }));
+            const rm = document.createElement("button"); rm.className = "wiz-remove-row"; rm.type = "button"; rm.textContent = "Entfernen";
+            rm.addEventListener("click", () => { wiz.data.externals.splice(i, 1); renderWizStep(); });
+            head.appendChild(rm);
+            card.appendChild(head);
+            const grid = mkDiv("wiz-person-grid");
+            grid.appendChild(wField("Name / Initialen", wText(ex.name, v => ex.name = v), true));
+            grid.appendChild(wField("Geschlecht", wSelect(ex.gender, GENDER_OPTS, v => ex.gender = v)));
+            grid.appendChild(wField("Rolle / Bezug", wText(ex.role, v => ex.role = v, "z. B. Patin, Pflegevater")));
+            grid.appendChild(wField("Beziehungsqualität", wSelect(ex.quality, EMOTIONAL_TYPES, v => ex.quality = v)));
+            card.appendChild(grid);
+            group.appendChild(card);
+          });
+          body.appendChild(group);
+        }
+      },
+      commit() {
+        wizPurge(this.key);
+        wiz.roles.externalIds = [];
+        wiz.data.externals.forEach(ex => {
+          const id = uid("p");
+          wiz.ws.people.push(makePerson(id, ex, { notes: ex.role, _wizStep: this.key }));
+          wiz.roles.externalIds.push(id);
+          wiz.roleWord[id] = ex.role || "Bezugsperson";
+          if (ex.quality) wiz.ws.relationships.push({ id: uid("r"), type: "emotional", subtype: ex.quality, from: wiz.roles.indexId, to: id, _wizStep: this.key });
+        });
+        return true;
+      },
+    },
+    {
+      key: "finish", title: "Fertig", skippable: false,
+      intro: "Das Genogramm wird jetzt erstellt. Feinschliff — Diagnosen, Notizen, Positionen, weitere Beziehungen — geht danach direkt im Editor.",
+      render(body) {
+        const sum = mkDiv("wiz-summary");
+        [
+          ["Personen insgesamt", wiz.ws.people.length],
+          ["Partnerschaften", wiz.ws.relationships.filter(r => r.type === "partner").length],
+          ["Eltern-Kind-Verbindungen", wiz.ws.relationships.filter(r => r.type === "parentchild").length],
+          ["Beziehungsqualitäten erfasst", wiz.ws.relationships.filter(r => r.type === "emotional").length],
+          ["Haushalte markiert", wiz.ws.households.length],
+        ].forEach(([label, val]) => {
+          const row = mkDiv("wiz-summary-row");
+          const s = document.createElement("span"); s.textContent = label; row.appendChild(s);
+          const b = document.createElement("b"); b.textContent = val; row.appendChild(b);
+          sum.appendChild(row);
+        });
+        body.appendChild(sum);
+      },
+      commit() { return true; },
+    },
+  ];
+
+  function currentApplicableSteps() { return WIZ_STEPS.filter(s => !s.applicable || s.applicable()); }
+
+  function openWizard() {
+    if (state.people.length > 0) {
+      if (!confirm(`Der Fragebogen baut ein neues Genogramm auf. Das aktuelle Genogramm (${state.people.length} Personen) wird dabei ersetzt. Fortfahren?`)) return;
+    }
+    wiz = newWizardSession();
+    $("#wizardBackdrop").hidden = false;
+    renderWizStep();
+  }
+  function closeWizard() { wiz = null; $("#wizardBackdrop").hidden = true; }
+
+  function renderWizStep() {
+    const steps = currentApplicableSteps();
+    if (wiz.stepIndex >= steps.length) wiz.stepIndex = steps.length - 1;
+    const step = steps[wiz.stepIndex];
+    $("#wizTitle").textContent = step.title;
+    $("#wizIntro").textContent = typeof step.intro === "function" ? step.intro() : step.intro;
+    $("#wizStepCount").textContent = `Schritt ${wiz.stepIndex + 1} von ${steps.length}`;
+    $("#wizProgressFill").style.width = ((wiz.stepIndex + 1) / steps.length * 100) + "%";
+    const body = $("#wizBody"); body.innerHTML = "";
+    step.render(body);
+    $("#wizBack").disabled = wiz.stepIndex === 0;
+    $("#wizSkip").hidden = step.skippable === false;
+    $("#wizNext").textContent = step.key === "finish" ? "Genogramm anzeigen" : "Weiter";
+  }
+  function wizBack() { if (wiz.stepIndex === 0) return; wiz.stepIndex--; renderWizStep(); }
+  function wizNext() {
+    const steps = currentApplicableSteps();
+    const step = steps[wiz.stepIndex];
+    if (step.commit() === false) return;
+    if (step.key === "finish") { wizFinish(); return; }
+    wiz.stepIndex++;
+    renderWizStep();
+  }
+  function wizSkipStep() {
+    const steps = currentApplicableSteps();
+    const step = steps[wiz.stepIndex];
+    if (step.onSkip) step.onSkip();
+    wizNext();
+  }
+  function wizFinish() {
+    wiz.ws.people.forEach(p => delete p._wizStep);
+    wiz.ws.relationships.forEach(r => delete r._wizStep);
+    wiz.ws.households.forEach(h => delete h._wizStep);
+    state = emptyState();
+    state.people = wiz.ws.people;
+    state.relationships = wiz.ws.relationships;
+    state.households = wiz.ws.households;
+    computeWizardLayout();
+    selection = null; history = []; historyIdx = -1;
+    pushHistory(); render(); renderProps(); autosave();
+    closeWizard();
+    requestAnimationFrame(fitToContent);
+    toast("Genogramm erstellt.");
+  }
+
+  function computeWizardLayout() {
+    const Y = { gp: 90, parent: 250, core: 420, child: 580 };
+    const SPACING = 130;
+    const wsById = id => wiz.ws.people.find(p => p.id === id);
+
+    const coreIds = [wiz.roles.indexId, ...wiz.roles.siblingIds];
+    const coreSorted = coreIds.slice().sort((a, b) => byYear(wsById(a)) - byYear(wsById(b)));
+    const coreStartX = 500 - (coreSorted.length - 1) * SPACING / 2;
+    coreSorted.forEach((id, i) => { const p = wsById(id); p.x = coreStartX + i * SPACING; p.y = Y.core; });
+
+    const indexP = wsById(wiz.roles.indexId);
+    let side = 1;
+    if (wiz.roles.partnerIds.length) {
+      const first = wsById(wiz.roles.partnerIds[0]);
+      if (indexP.gender === "f" && first.gender === "m") side = -1;
+    }
+    const coreXs = coreSorted.map(id => wsById(id).x);
+    const coreEdgeX = side === 1 ? Math.max(...coreXs) : Math.min(...coreXs);
+    wiz.roles.partnerIds.forEach((id, i) => { const p = wsById(id); p.x = coreEdgeX + side * SPACING * (i + 1); p.y = Y.core; });
+
+    if (wiz.roles.parentIds.length) {
+      const coreAvgX = coreSorted.reduce((s, id) => s + wsById(id).x, 0) / coreSorted.length;
+      if (wiz.roles.parentIds.length === 2) {
+        const [idA, idB] = wiz.roles.parentIds;
+        const pa = wsById(idA), pb = wsById(idB);
+        const leftIsA = !(pa.gender === "f" && pb.gender === "m");
+        pa.x = coreAvgX + (leftIsA ? -1 : 1) * SPACING / 2; pa.y = Y.parent;
+        pb.x = coreAvgX + (leftIsA ? 1 : -1) * SPACING / 2; pb.y = Y.parent;
+      } else {
+        const pa = wsById(wiz.roles.parentIds[0]); pa.x = coreAvgX; pa.y = Y.parent;
+      }
+    }
+
+    ["A", "B"].forEach((sideKey, idx) => {
+      const ids = wiz.roles.gpIds[sideKey] || [];
+      if (!ids.length) return;
+      const parentId = wiz.roles.parentIds[idx];
+      const parentX = parentId ? wsById(parentId).x : 500;
+      if (ids.length === 2) {
+        const [ga, gb] = ids;
+        const pa = wsById(ga), pb = wsById(gb);
+        const leftIsA = !(pa.gender === "f" && pb.gender === "m");
+        pa.x = parentX + (leftIsA ? -1 : 1) * SPACING / 2; pa.y = Y.gp;
+        pb.x = parentX + (leftIsA ? 1 : -1) * SPACING / 2; pb.y = Y.gp;
+      } else {
+        const ga = wsById(ids[0]); ga.x = parentX; ga.y = Y.gp;
+      }
+    });
+
+    if (wiz.roles.childIds.length) {
+      const parentXs = [indexP.x, ...wiz.roles.partnerIds.slice(0, 1).map(id => wsById(id).x)];
+      const centerX = parentXs.reduce((s, x) => s + x, 0) / parentXs.length;
+      const sortedChildren = wiz.roles.childIds.slice().sort((a, b) => byYear(wsById(a)) - byYear(wsById(b)));
+      const startX = centerX - (sortedChildren.length - 1) * SPACING / 2;
+      sortedChildren.forEach((id, i) => { const p = wsById(id); p.x = startX + i * SPACING; p.y = Y.child; });
+    }
+
+    const externalSet = new Set(wiz.roles.externalIds || []);
+    const nonExternalXs = wiz.ws.people.filter(p => !externalSet.has(p.id)).map(p => p.x);
+    const coreMaxX = nonExternalXs.length ? Math.max(...nonExternalXs) : 500;
+    (wiz.roles.externalIds || []).forEach((id, i) => {
+      const p = wsById(id);
+      p.x = coreMaxX + 220;
+      p.y = Y.core + i * 110 - (((wiz.roles.externalIds.length) - 1) * 55);
+    });
+  }
+
+  $("#btnWizard").addEventListener("click", openWizard);
+  $("#wizClose").addEventListener("click", closeWizard);
+  $("#wizBack").addEventListener("click", wizBack);
+  $("#wizSkip").addEventListener("click", wizSkipStep);
+  $("#wizNext").addEventListener("click", wizNext);
+
+  /* ───────────────────────── Toolbar actions ───────────────────────── */
+  $("#btnPaletteToggle").addEventListener("click", () => $("#palette").classList.toggle("open"));
+  $("#btnUndo").addEventListener("click", undo);
+  $("#btnRedo").addEventListener("click", redo);
+  $("#btnZoomIn").addEventListener("click", () => zoomAt(innerWidth/2, innerHeight/2, 0.2));
+  $("#btnZoomOut").addEventListener("click", () => zoomAt(innerWidth/2, innerHeight/2, -0.2));
+  $("#btnZoomFit").addEventListener("click", fitToContent);
+
+  function fitToContent() {
+    if (!state.people.length) { view = { x: 0, y: 0, scale: 1 }; render(); return; }
+    const pad = 90;
+    const xs = state.people.map(p => p.x), ys = state.people.map(p => p.y);
+    const minX = Math.min(...xs) - pad, maxX = Math.max(...xs) + pad;
+    const minY = Math.min(...ys) - pad - 20, maxY = Math.max(...ys) + pad + 40;
+    const rect = svg.getBoundingClientRect();
+    const vb = svg.viewBox.baseVal;
+    const scaleX = (vb.width) / (maxX - minX);
+    const scaleY = (vb.height) / (maxY - minY);
+    view.scale = Math.min(2.2, Math.max(0.25, Math.min(scaleX, scaleY)));
+    view.x = vb.x + vb.width/2 - (minX + maxX)/2 * view.scale;
+    view.y = vb.y + vb.height/2 - (minY + maxY)/2 * view.scale;
+    render();
+  }
+
+  $("#btnNew").addEventListener("click", () => {
+    if (!confirm("Neues, leeres Genogramm beginnen? Ungespeicherte Änderungen gehen verloren.")) return;
+    state = emptyState(); selection = null; history = []; historyIdx = -1;
+    pushHistory(); render(); renderProps(); autosave();
+    toast("Neues Genogramm angelegt.");
+  });
+
+  /* ───────────────────────── Save / load / export ───────────────────────── */
+  let downloadsCap = null;
+  (async () => {
+    try { downloadsCap = await window.claude?.use?.("downloads"); } catch (e) { downloadsCap = null; }
+  })();
+
+  async function offerFile(filename, data, mime) {
+    const blob = data instanceof Blob ? data : new Blob([data], { type: mime || "application/octet-stream" });
+    if (downloadsCap) {
+      try {
+        const res = await downloadsCap.save({ filename, data: blob });
+        toast(res.status === "saved" ? "Gespeichert." : "Übertragen.");
+        return;
+      } catch (err) {
+        if (err && err.code === "declined") return;
+        console.warn("downloads.save failed", err);
+      }
+    }
+    // fallback: trigger a normal browser download
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 30000);
+    toast("Gespeichert.");
+  }
+
+  $("#btnSave").addEventListener("click", () => {
+    const json = JSON.stringify(state, null, 2);
+    offerFile(suggestFilename("json"), json, "application/json");
+  });
+  function suggestFilename(ext) {
+    const idx = state.people.find(p => p.isIndex);
+    const base = idx && idx.name ? idx.name.replace(/[^\w\-]+/g, "_") : "genogramm";
+    const d = new Date().toISOString().slice(0,10);
+    return `${base}_${d}.${ext}`;
+  }
+
+  $("#btnLoad").addEventListener("click", () => $("#fileInput").click());
+  $("#fileInput").addEventListener("change", (e) => {
+    const file = e.target.files[0]; if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const data = JSON.parse(reader.result);
+        if (!data.people) throw new Error("kein gültiges Genogramm");
+        state = Object.assign(emptyState(), data);
+        selection = null; history = []; historyIdx = -1;
+        pushHistory(); render(); renderProps(); fitToContent(); autosave();
+        toast("Genogramm geladen.");
+      } catch (err) { toast("Datei konnte nicht gelesen werden."); }
+    };
+    reader.readAsText(file);
+    e.target.value = "";
+  });
+
+  $("#btnExport").addEventListener("click", () => {
+    openModal("Exportieren", "Format wählen", [
+      { label: "SVG (Vektor)", sub: "zur Weiterbearbeitung in Vektorprogrammen", swatch: exportIcon("svg"), onPick: () => { closeModal(); exportSVG(); } },
+      { label: "PNG (Bild)", sub: "zum schnellen Teilen", swatch: exportIcon("png"), onPick: () => { closeModal(); exportPNG(); } },
+      { label: "PDF (Dokumentation)", sub: "für die Akte", swatch: exportIcon("pdf"), onPick: () => { closeModal(); exportPDF(); } },
+      { label: "JSON (Projektdatei)", sub: "zum Weiterbearbeiten in diesem Tool", swatch: exportIcon("json"), onPick: () => { closeModal(); $("#btnSave").click(); } },
+    ]);
+  });
+  function exportIcon(kind) {
+    const s = el("svg", { viewBox: "0 0 24 24", width: 20, height: 20, fill: "none", stroke: "currentColor", "stroke-width": 1.8 });
+    s.appendChild(el("path", { d: "M14 3v4a1 1 0 0 0 1 1h4" }));
+    s.appendChild(el("path", { d: "M17 21H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7l5 5v11a2 2 0 0 1-2 2Z" }));
+    return s;
+  }
+
+  function buildExportSVGString() {
+    const clone = svg.cloneNode(true);
+    const bounds = computeContentBounds();
+    clone.setAttribute("viewBox", `${bounds.x} ${bounds.y} ${bounds.w} ${bounds.h}`);
+    clone.setAttribute("width", bounds.w); clone.setAttribute("height", bounds.h);
+    const world = clone.querySelector("#world");
+    if (world) world.removeAttribute("transform");
+    // resolve CSS var()s to literal colors for portability
+    const cssVars = getComputedStyle(document.documentElement);
+    const varNames = ["--paper-raised","--ink","--ink-soft","--ink-faint","--line","--line-strong","--accent","--warn","--danger"];
+    let styleTxt = ":root{";
+    varNames.forEach(v => styleTxt += `${v}:${cssVars.getPropertyValue(v).trim()};`);
+    styleTxt += "} text{font-family:'IBM Plex Sans',sans-serif;} .mono{font-family:'IBM Plex Mono',monospace;}";
+    const styleEl = document.createElementNS(SVGNS, "style");
+    styleEl.textContent = styleTxt;
+    clone.insertBefore(styleEl, clone.firstChild);
+    const bg = document.createElementNS(SVGNS, "rect");
+    bg.setAttribute("x", bounds.x); bg.setAttribute("y", bounds.y); bg.setAttribute("width", bounds.w); bg.setAttribute("height", bounds.h);
+    bg.setAttribute("fill", cssVars.getPropertyValue("--paper").trim());
+    clone.insertBefore(bg, clone.firstChild.nextSibling);
+    return new XMLSerializer().serializeToString(clone);
+  }
+  function computeContentBounds() {
+    if (!state.people.length) return { x: 0, y: 0, w: 800, h: 500 };
+    const pad = 70;
+    const xs = state.people.map(p => p.x), ys = state.people.map(p => p.y);
+    const minX = Math.min(...xs) - pad, maxX = Math.max(...xs) + pad;
+    const minY = Math.min(...ys) - pad - 30, maxY = Math.max(...ys) + pad + 50;
+    return { x: minX, y: minY, w: maxX - minX, h: maxY - minY };
+  }
+
+  function exportSVG() {
+    const str = buildExportSVGString();
+    offerFile(suggestFilename("svg"), str, "image/svg+xml");
+  }
+
+  function svgToPngBlob(scale) {
+    return new Promise((resolve, reject) => {
+      const bounds = computeContentBounds();
+      const str = buildExportSVGString();
+      const img = new Image();
+      const blob = new Blob([str], { type: "image/svg+xml;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        canvas.width = bounds.w * scale; canvas.height = bounds.h * scale;
+        const ctx = canvas.getContext("2d");
+        ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue("--paper").trim();
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        URL.revokeObjectURL(url);
+        canvas.toBlob(b => b ? resolve({ blob: b, bounds }) : reject(new Error("toBlob failed")), "image/png");
+      };
+      img.onerror = reject;
+      img.src = url;
+    });
+  }
+
+  function exportPNG() {
+    svgToPngBlob(2.5).then(({ blob }) => offerFile(suggestFilename("png"), blob, "image/png"))
+      .catch(() => toast("PNG-Export ist fehlgeschlagen."));
+  }
+
+  function exportPDF() {
+    if (!window.jspdf) { toast("PDF-Bibliothek konnte nicht geladen werden."); return; }
+    svgToPngBlob(2.5).then(({ blob, bounds }) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const { jsPDF } = window.jspdf;
+        const orientation = bounds.w >= bounds.h ? "l" : "p";
+        const pdf = new jsPDF({ orientation, unit: "pt", format: [bounds.w, bounds.h] });
+        pdf.addImage(reader.result, "PNG", 0, 0, bounds.w, bounds.h);
+        const pdfBlob = pdf.output("blob");
+        offerFile(suggestFilename("pdf"), pdfBlob, "application/pdf");
+      };
+      reader.readAsDataURL(blob);
+    }).catch(() => toast("PDF-Export ist fehlgeschlagen."));
+  }
+
+  /* ───────────────────────── Autosave (localStorage, best-effort) ───────────────────────── */
+  function autosave() {
+    try { localStorage.setItem("genogramm-autosave", JSON.stringify(state)); } catch (e) {}
+  }
+  function tryRestoreAutosave() {
+    try {
+      const raw = localStorage.getItem("genogramm-autosave");
+      if (raw) { const data = JSON.parse(raw); if (data && data.people && data.people.length) return data; }
+    } catch (e) {}
+    return null;
+  }
+
+  /* ───────────────────────── Boot ───────────────────────── */
+  function boot(initial) {
+    state = initial || tryRestoreAutosave() || sampleState();
+    history = []; historyIdx = -1; pushHistory();
+    render(); renderProps(); updateUndoRedoButtons();
+    requestAnimationFrame(fitToContent);
+  }
+
+  boot();
+})();
+</script>
+</div>
+</body>
+</html>
