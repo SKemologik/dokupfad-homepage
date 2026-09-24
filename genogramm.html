@@ -24,6 +24,23 @@
     --site-fg: 162 73% 10%;
     --site-primary: 160 84% 39%;
     --site-primary-deep: 162 73% 22%;
+    --paper: hsl(150 40% 98%);
+    --paper-raised: hsl(0 0% 100%);
+    --paper-sunken: hsl(151 55% 93%);
+    --ink: hsl(162 73% 10%);
+    --ink-soft: hsl(160 20% 38%);
+    --ink-faint: hsl(160 15% 55%);
+    --line: hsl(150 25% 89%);
+    --line-strong: hsl(150 20% 72%);
+    --accent: hsl(160 84% 39%);
+    --accent-ink: hsl(0 0% 100%);
+    --accent-soft: hsl(151 55% 93%);
+    --accent-soft-ink: hsl(162 73% 22%);
+    --warn: hsl(28 78% 46%);
+    --danger: hsl(355 62% 46%);
+    --danger-soft: hsl(355 60% 95%);
+    --shadow: 162 40% 10%;
+    --canvas-dot: hsl(150 20% 87%);
   }
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
@@ -32,7 +49,43 @@
       --site-fg: 150 40% 95%;
       --site-primary: 160 84% 45%;
       --site-primary-deep: 151 71% 78%;
+      --paper: hsl(162 73% 7%);
+      --paper-raised: hsl(162 60% 12%);
+      --paper-sunken: hsl(162 70% 5%);
+      --ink: hsl(150 40% 95%);
+      --ink-soft: hsl(150 20% 68%);
+      --ink-faint: hsl(150 15% 50%);
+      --line: hsl(162 60% 18%);
+      --line-strong: hsl(162 50% 30%);
+      --accent: hsl(160 84% 45%);
+      --accent-ink: hsl(162 73% 8%);
+      --accent-soft: hsl(162 45% 18%);
+      --accent-soft-ink: hsl(151 71% 78%);
+      --warn: hsl(30 80% 62%);
+      --danger: hsl(355 70% 66%);
+      --danger-soft: hsl(355 40% 18%);
+      --shadow: 0 0% 0%;
+      --canvas-dot: hsl(162 40% 20%);
     }
+  }
+  :root[data-theme="dark"] {
+    --paper: hsl(162 73% 7%);
+    --paper-raised: hsl(162 60% 12%);
+    --paper-sunken: hsl(162 70% 5%);
+    --ink: hsl(150 40% 95%);
+    --ink-soft: hsl(150 20% 68%);
+    --ink-faint: hsl(150 15% 50%);
+    --line: hsl(162 60% 18%);
+    --line-strong: hsl(162 50% 30%);
+    --accent: hsl(160 84% 45%);
+    --accent-ink: hsl(162 73% 8%);
+    --accent-soft: hsl(162 45% 18%);
+    --accent-soft-ink: hsl(151 71% 78%);
+    --warn: hsl(30 80% 62%);
+    --danger: hsl(355 70% 66%);
+    --danger-soft: hsl(355 40% 18%);
+    --shadow: 0 0% 0%;
+    --canvas-dot: hsl(162 40% 20%);
   }
   html, body { height: 100%; margin: 0; }
   .page-shell { display: flex; flex-direction: column; height: 100%; }
@@ -58,64 +111,6 @@
     .site-header .site-links { gap: 12px; font-size: 0.78rem; flex-basis: 100%; }
   }
   #app { flex: 1; min-height: 0; }
-    --paper: hsl(38 28% 97%);
-    --paper-raised: hsl(38 22% 100%);
-    --paper-sunken: hsl(38 20% 93%);
-    --ink: hsl(220 22% 14%);
-    --ink-soft: hsl(220 12% 42%);
-    --ink-faint: hsl(220 10% 60%);
-    --line: hsl(220 14% 82%);
-    --line-strong: hsl(220 14% 66%);
-    --accent: hsl(202 60% 36%);
-    --accent-ink: hsl(0 0% 100%);
-    --accent-soft: hsl(202 55% 93%);
-    --accent-soft-ink: hsl(202 60% 26%);
-    --warn: hsl(28 78% 46%);
-    --danger: hsl(355 62% 46%);
-    --danger-soft: hsl(355 60% 95%);
-    --shadow: 220 30% 10%;
-    --canvas-dot: hsl(220 14% 86%);
-  }
-  @media (prefers-color-scheme: dark) {
-    :root:not([data-theme="light"]) {
-      --paper: hsl(222 22% 10%);
-      --paper-raised: hsl(222 20% 14%);
-      --paper-sunken: hsl(222 24% 8%);
-      --ink: hsl(38 20% 93%);
-      --ink-soft: hsl(220 10% 68%);
-      --ink-faint: hsl(220 8% 48%);
-      --line: hsl(220 14% 26%);
-      --line-strong: hsl(220 14% 38%);
-      --accent: hsl(202 65% 62%);
-      --accent-ink: hsl(222 30% 8%);
-      --accent-soft: hsl(202 45% 18%);
-      --accent-soft-ink: hsl(202 70% 84%);
-      --warn: hsl(30 80% 62%);
-      --danger: hsl(355 70% 66%);
-      --danger-soft: hsl(355 40% 18%);
-      --shadow: 0 0% 0%;
-      --canvas-dot: hsl(220 16% 22%);
-    }
-  }
-  :root[data-theme="dark"] {
-    --paper: hsl(222 22% 10%);
-    --paper-raised: hsl(222 20% 14%);
-    --paper-sunken: hsl(222 24% 8%);
-    --ink: hsl(38 20% 93%);
-    --ink-soft: hsl(220 10% 68%);
-    --ink-faint: hsl(220 8% 48%);
-    --line: hsl(220 14% 26%);
-    --line-strong: hsl(220 14% 38%);
-    --accent: hsl(202 65% 62%);
-    --accent-ink: hsl(222 30% 8%);
-    --accent-soft: hsl(202 45% 18%);
-    --accent-soft-ink: hsl(202 70% 84%);
-    --warn: hsl(30 80% 62%);
-    --danger: hsl(355 70% 66%);
-    --danger-soft: hsl(355 40% 18%);
-    --shadow: 0 0% 0%;
-    --canvas-dot: hsl(220 16% 22%);
-  }
 
   * { box-sizing: border-box; }
   [hidden] { display: none !important; }
@@ -468,8 +463,8 @@
       <div class="palette-section">
         <h3>Person platzieren</h3>
         <div class="palette-grid">
-          <button class="pal-btn" data-place="m" title="Mann"><svg viewBox="0 0 44 44"><rect x="9" y="9" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2.4"/></svg>Mann</button>
-          <button class="pal-btn" data-place="f" title="Frau"><svg viewBox="0 0 44 44"><circle cx="22" cy="22" r="14" fill="none" stroke="currentColor" stroke-width="2.4"/></svg>Frau</button>
+          <button class="pal-btn" data-place="m" title="Männlich"><svg viewBox="0 0 44 44"><rect x="9" y="9" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2.4"/></svg>Männlich</button>
+          <button class="pal-btn" data-place="f" title="Weiblich"><svg viewBox="0 0 44 44"><circle cx="22" cy="22" r="14" fill="none" stroke="currentColor" stroke-width="2.4"/></svg>Weiblich</button>
           <button class="pal-btn" data-place="d" title="Divers / nicht-binär"><svg viewBox="0 0 44 44"><path d="M22 6 A14 14 0 0 1 36 20 L36 36 L8 36 L8 20 A14 14 0 0 1 22 6 Z" fill="none" stroke="currentColor" stroke-width="2.4"/></svg>Divers</button>
           <button class="pal-btn" data-place="u" title="Geschlecht unbekannt"><svg viewBox="0 0 44 44"><rect x="22" y="6" width="22.6" height="22.6" fill="none" stroke="currentColor" stroke-width="2.4" transform="rotate(45 22 22)"/></svg>Unbekannt</button>
         </div>
@@ -555,7 +550,7 @@
 
   /* ───────────────────────── Data / constants ───────────────────────── */
   const R = 22; // person symbol half-size
-  const GENDERS = { m: "Mann", f: "Frau", d: "Divers", u: "Unbekannt" };
+  const GENDERS = { m: "Männlich", f: "Weiblich", d: "Divers", u: "Unbekannt" };
 
   const PARTNER_TYPES = [
     { id: "married", label: "Verheiratet", hint: "durchgezogene Linie" },
@@ -568,6 +563,12 @@
     { id: "biological", label: "Biologisch", hint: "durchgezogene Linie" },
     { id: "adoption", label: "Adoption", hint: "gestrichelte Linie" },
     { id: "foster", label: "Pflegeverhältnis", hint: "gestrichelt, „Pflege“" },
+  ];
+  const SIBLING_FILIATION_TYPES = [
+    { id: "biological", label: "Leiblich (beide Eltern)" },
+    { id: "half", label: "Halbgeschwister (ein gemeinsamer Elternteil)" },
+    { id: "adoption", label: "Adoptiert" },
+    { id: "foster", label: "Pflegekind" },
   ];
   const EMOTIONAL_TYPES = [
     { id: "connected", label: "Verbunden (neutral)" },
@@ -1329,7 +1330,7 @@
       row.appendChild(field("Geburtsjahr", numInput(p.birthYear, v => p.birthYear = v, "1985")));
       row.appendChild(field("Todesjahr", numInput(p.deathYear, v => p.deathYear = v, "—")));
       body.appendChild(row);
-      body.appendChild(field("Geschlecht", selectInput(p.gender, [{id:"m",label:"Mann"},{id:"f",label:"Frau"},{id:"d",label:"Divers"},{id:"u",label:"Unbekannt"}], v => p.gender = v)));
+      body.appendChild(field("Geschlecht", selectInput(p.gender, [{id:"m",label:"Männlich"},{id:"f",label:"Weiblich"},{id:"d",label:"Divers"},{id:"u",label:"Unbekannt"}], v => p.gender = v)));
       body.appendChild(checkField("Verstorben", p.deceased, v => p.deceased = v));
       body.appendChild(checkField("Indexperson (Klient:in)", p.isIndex, v => { if (v) state.people.forEach(x => x.isIndex = false); p.isIndex = v; }));
       body.appendChild(field("Beruf", textInput(p.profession, v => p.profession = v)));
@@ -1441,7 +1442,7 @@
       return svgEl;
     }
     section("Personen", [
-      row(shapeSwatch("m"), "Mann"), row(shapeSwatch("f"), "Frau"), row(shapeSwatch("d"), "Divers / nicht-binär"), row(shapeSwatch("u"), "Geschlecht unbekannt"),
+      row(shapeSwatch("m"), "Männlich"), row(shapeSwatch("f"), "Weiblich"), row(shapeSwatch("d"), "Divers / nicht-binär"), row(shapeSwatch("u"), "Geschlecht unbekannt"),
       row((() => { const s = el("svg", { viewBox: "0 0 28 28", width: 22, height: 22 }); s.appendChild(el("line", { x1: 6, y1: 6, x2: 22, y2: 22, stroke: "var(--ink-soft)", "stroke-width": 2 })); s.appendChild(el("line", { x1: 6, y1: 22, x2: 22, y2: 6, stroke: "var(--ink-soft)", "stroke-width": 2 })); return s; })(), "Verstorben (diagonales Kreuz)"),
       row((() => { const s = el("svg", { viewBox: "0 0 28 28", width: 22, height: 22 }); s.appendChild(el("rect", { x: 5, y: 5, width: 18, height: 18, fill: "none", stroke: "var(--accent)", "stroke-width": 1.6 })); return s; })(), "Doppelte Umrandung = Indexperson"),
     ]);
@@ -1468,7 +1469,7 @@
   $("#btnLegendClose").addEventListener("click", () => $("#legend").hidden = true);
 
   /* ───────────────────────── Geführter Fragebogen (Wizard) ───────────────────────── */
-  const GENDER_OPTS = [{ id: "m", label: "Mann" }, { id: "f", label: "Frau" }, { id: "d", label: "Divers" }, { id: "u", label: "Unbekannt" }];
+  const GENDER_OPTS = [{ id: "m", label: "Männlich" }, { id: "f", label: "Weiblich" }, { id: "d", label: "Divers" }, { id: "u", label: "Unbekannt" }];
   let wiz = null;
 
   function blankPerson(gender) { return { gender: gender || "u", name: "", birthYear: "", deceased: false, deathYear: "" }; }
@@ -1687,14 +1688,25 @@
       onSkip() { wiz.data.siblings = []; },
       render(body) {
         body.appendChild(wField("Anzahl Geschwister", stepperControl(wiz.data.siblings.length, 0, 10, n => {
-          resizeArray(wiz.data.siblings, n, () => ({ gender: "u", name: "", birthYear: "", deceased: false, deathYear: "", filiation: "biological" }));
+          resizeArray(wiz.data.siblings, n, () => ({ gender: "u", name: "", birthYear: "", deceased: false, deathYear: "", filiation: "biological", halfParentIdx: 0 }));
           renderWizStep();
         })));
         if (wiz.data.siblings.length) {
           const group = mkDiv("wiz-card-group");
+          const canHalf = wiz.data.parentsMode === "two";
           wiz.data.siblings.forEach((sib, i) => {
             group.appendChild(personCard(`Geschwister ${i + 1}`, sib, (card, grid) => {
-              if (wiz.data.parentsMode !== "none") grid.appendChild(wField("Abstammung", wSelect(sib.filiation, PARENTCHILD_TYPES, v => sib.filiation = v)));
+              if (wiz.data.parentsMode !== "none") {
+                const opts = canHalf ? SIBLING_FILIATION_TYPES : SIBLING_FILIATION_TYPES.filter(t => t.id !== "half");
+                grid.appendChild(wField("Verwandtschaftsgrad", wSelect(sib.filiation, opts, v => { sib.filiation = v; renderWizStep(); })));
+                if (sib.filiation === "half" && canHalf) {
+                  const parentOpts = [
+                    { id: "0", label: labelForWs(wiz.roles.parentIds[0]) || "Elternteil 1" },
+                    { id: "1", label: labelForWs(wiz.roles.parentIds[1]) || "Elternteil 2" },
+                  ];
+                  grid.appendChild(wField("Gemeinsamer Elternteil", wSelect(String(sib.halfParentIdx || 0), parentOpts, v => sib.halfParentIdx = parseInt(v, 10))));
+                }
+              }
             }, () => { wiz.data.siblings.splice(i, 1); renderWizStep(); }));
           });
           body.appendChild(group);
@@ -1708,7 +1720,12 @@
           wiz.ws.people.push(makePerson(id, sib, { _wizStep: this.key }));
           wiz.roles.siblingIds.push(id);
           wiz.roleWord[id] = roleWord("sibling", sib.gender);
-          if (wiz.roles.parentIds.length) linkParentChild(wiz.roles.parentIds, id, sib.filiation || "biological", this.key);
+          if (sib.filiation === "half" && wiz.roles.parentIds.length === 2) {
+            const parentId = wiz.roles.parentIds[sib.halfParentIdx || 0];
+            linkParentChild([parentId], id, "biological", this.key);
+          } else if (wiz.roles.parentIds.length) {
+            linkParentChild(wiz.roles.parentIds, id, sib.filiation || "biological", this.key);
+          }
         });
         return true;
       },
