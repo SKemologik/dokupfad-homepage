@@ -2230,18 +2230,33 @@
     clone.setAttribute("width", bounds.w); clone.setAttribute("height", bounds.h);
     const world = clone.querySelector("#world");
     if (world) world.removeAttribute("transform");
-    // resolve CSS var()s to literal colors for portability
+    // Resolve CSS var()s to literal colors directly on every element's attributes.
+    // Firefox does not resolve var() inside SVG presentation attributes when the
+    // SVG is rasterized as a detached <img> (used for PNG/PDF export) — it silently
+    // falls back to the SVG spec default (fill: black), turning the whole export
+    // black. Chromium-based browsers resolve it fine, which is why this only shows
+    // up in Firefox. Substituting literal values here avoids relying on var() at
+    // rasterization time in any browser.
     const cssVars = getComputedStyle(document.documentElement);
-    const varNames = ["--paper-raised","--ink","--ink-soft","--ink-faint","--line","--line-strong","--accent","--warn","--danger"];
-    let styleTxt = ":root{";
-    varNames.forEach(v => styleTxt += `${v}:${cssVars.getPropertyValue(v).trim()};`);
-    styleTxt += "} text{font-family:'IBM Plex Sans',sans-serif;} .mono{font-family:'IBM Plex Mono',monospace;}";
+    const varNames = ["--paper","--paper-raised","--paper-sunken","--ink","--ink-soft","--ink-faint","--line","--line-strong","--accent","--accent-ink","--accent-soft","--accent-soft-ink","--warn","--danger","--danger-soft"];
+    const varMap = {};
+    varNames.forEach(v => { varMap[v] = cssVars.getPropertyValue(v).trim(); });
+    const varPattern = /var\((--[\w-]+)\)/g;
+    function resolveVars(value) {
+      return value.replace(varPattern, (m, name) => (varMap[name] !== undefined ? varMap[name] : m));
+    }
+    ["fill", "stroke", "stop-color"].forEach(attr => {
+      clone.querySelectorAll("[" + attr + "]").forEach(el => {
+        const val = el.getAttribute(attr);
+        if (val && val.indexOf("var(") !== -1) el.setAttribute(attr, resolveVars(val));
+      });
+    });
     const styleEl = document.createElementNS(SVGNS, "style");
-    styleEl.textContent = styleTxt;
+    styleEl.textContent = "text{font-family:'IBM Plex Sans',sans-serif;} .mono{font-family:'IBM Plex Mono',monospace;}";
     clone.insertBefore(styleEl, clone.firstChild);
     const bg = document.createElementNS(SVGNS, "rect");
     bg.setAttribute("x", bounds.x); bg.setAttribute("y", bounds.y); bg.setAttribute("width", bounds.w); bg.setAttribute("height", bounds.h);
-    bg.setAttribute("fill", cssVars.getPropertyValue("--paper").trim());
+    bg.setAttribute("fill", varMap["--paper"]);
     clone.insertBefore(bg, clone.firstChild.nextSibling);
     return new XMLSerializer().serializeToString(clone);
   }
