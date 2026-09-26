@@ -465,6 +465,8 @@
           <button class="pal-btn" data-place="f" title="Weiblich"><svg viewBox="0 0 44 44"><circle cx="22" cy="22" r="14" fill="none" stroke="currentColor" stroke-width="2.4"/></svg>Weiblich</button>
           <button class="pal-btn" data-place="d" title="Divers / nicht-binär"><svg viewBox="0 0 44 44"><path d="M22 6 A14 14 0 0 1 36 20 L36 36 L8 36 L8 20 A14 14 0 0 1 22 6 Z" fill="none" stroke="currentColor" stroke-width="2.4"/></svg>Divers</button>
           <button class="pal-btn" data-place="u" title="Geschlecht unbekannt"><svg viewBox="0 0 44 44"><rect x="22" y="6" width="22.6" height="22.6" fill="none" stroke="currentColor" stroke-width="2.4" transform="rotate(45 22 22)"/></svg>Unbekannt</button>
+          <button class="pal-btn" data-place="preg" title="Schwangerschaft"><svg viewBox="0 0 44 44"><path d="M22 10 L34 34 L10 34 Z" fill="none" stroke="currentColor" stroke-width="2.4"/></svg>Schwanger­schaft</button>
+          <button class="pal-btn" data-place="loss" title="Fehlgeburt / Abtreibung"><svg viewBox="0 0 44 44"><path d="M22 10 L34 34 L10 34 Z" fill="currentColor" stroke="currentColor" stroke-width="2.4"/></svg>Fehlgeburt</button>
         </div>
       </div>
 
@@ -482,6 +484,7 @@
         <div class="palette-grid">
           <button class="pal-btn pal-btn-wide" id="toolHousehold"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-dasharray="3 2"><rect x="3" y="3" width="18" height="18" rx="3"/></svg>Haushalt markieren</button>
           <button class="pal-btn pal-btn-wide" id="toolNote"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 3v4a1 1 0 0 0 1 1h4"/><path d="M17 21H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7l5 5v11a2 2 0 0 1-2 2Z"/></svg>Ereignis-Notiz</button>
+          <button class="pal-btn pal-btn-wide" id="toolTwins"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20V10M12 10L6 4M12 10l6-6"/></svg>Zwillinge markieren</button>
         </div>
       </div>
 
@@ -548,7 +551,7 @@
 
   /* ───────────────────────── Data / constants ───────────────────────── */
   const R = 22; // person symbol half-size
-  const GENDERS = { m: "Männlich", f: "Weiblich", d: "Divers", u: "Unbekannt" };
+  const GENDERS = { m: "Männlich", f: "Weiblich", d: "Divers", u: "Unbekannt", preg: "Schwangerschaft", loss: "Fehlgeburt/Abtreibung" };
 
   const PARTNER_TYPES = [
     { id: "married", label: "Verheiratet", hint: "durchgezogene Linie" },
@@ -592,11 +595,12 @@
   let connectMode = null; // { kind, subtype, first }
   let householdMode = false, householdPick = [];
   let noteMode = false;
+  let twinMode = false, twinPick = [];
   let dragging = null; // { id, dx, dy }
   let panDrag = null;
 
   function emptyState() {
-    return { people: [], relationships: [], households: [], notes: [] };
+    return { people: [], relationships: [], households: [], notes: [], twinGroups: [] };
   }
 
   function sampleState() {
@@ -619,6 +623,7 @@
       relationships: [partnersGp, partners1, pc1, pc2, pc3, em1, em2, em3],
       households: [{ id: uid("h"), memberIds: [m.id, c1.id, c2.id], label: "gemeinsamer Haushalt" }],
       notes: [{ id: uid("n"), targetId: c1.id, targetType: "person", year: "2024", text: "Auszug aus dem elterlichen Haushalt" }],
+      twinGroups: [{ id: uid("t"), type: "fraternal", memberIds: [c1.id, c2.id] }],
     };
   }
 
@@ -717,7 +722,17 @@
 
     // partnership + parent-child (structural)
     state.relationships.filter(r => r.type === "partner").forEach(r => renderPartner(r, structLayer));
-    state.relationships.filter(r => r.type === "parentchild").forEach(r => renderParentChild(r, structLayer));
+    const pcRels = state.relationships.filter(r => r.type === "parentchild");
+    const twinRendered = new Set();
+    (state.twinGroups || []).forEach(tg => {
+      const relA = pcRels.find(r => r.childId === tg.memberIds[0]);
+      const relB = pcRels.find(r => r.childId === tg.memberIds[1]);
+      if (relA && relB && sameParentSet(relA, relB)) {
+        renderTwinPair(relA, relB, tg.type, structLayer);
+        twinRendered.add(relA.id); twinRendered.add(relB.id);
+      }
+    });
+    pcRels.filter(r => !twinRendered.has(r.id)).forEach(r => renderParentChild(r, structLayer));
 
     // emotional lines
     state.relationships.filter(r => r.type === "emotional").forEach(r => renderEmotional(r, emoLayer));
@@ -791,19 +806,27 @@
     r._renderY = y; r._renderMidX = midX; r._left = left; r._right = right;
   }
 
+  function parentOrigin(parentIds) {
+    const parents = (parentIds || []).map(personById).filter(Boolean);
+    if (!parents.length) return null;
+    if (parents.length === 2) {
+      const pRel = partnerLinksForPair(parents[0].id, parents[1].id)[0];
+      if (pRel && pRel._renderY != null) return { x: pRel._renderMidX, y: pRel._renderY };
+      return { x: (parents[0].x + parents[1].x) / 2, y: Math.max(parents[0].y, parents[1].y) + R + 26 };
+    }
+    return { x: parents[0].x, y: parents[0].y + R };
+  }
+  function sameParentSet(a, b) {
+    const pa = (a.parentIds || []).slice().sort().join(",");
+    const pb = (b.parentIds || []).slice().sort().join(",");
+    return pa !== "" && pa === pb;
+  }
   function renderParentChild(r, layer) {
     const child = personById(r.childId);
     if (!child) return;
-    const parents = (r.parentIds || []).map(personById).filter(Boolean);
-    if (!parents.length) return;
-    let originX, originY;
-    if (parents.length === 2) {
-      const pRel = partnerLinksForPair(parents[0].id, parents[1].id)[0];
-      if (pRel && pRel._renderY != null) { originX = pRel._renderMidX; originY = pRel._renderY; }
-      else { originX = (parents[0].x + parents[1].x) / 2; originY = Math.max(parents[0].y, parents[1].y) + R + 26; }
-    } else {
-      originX = parents[0].x; originY = parents[0].y + R;
-    }
+    const origin = parentOrigin(r.parentIds);
+    if (!origin) return;
+    const originX = origin.x, originY = origin.y;
     const dashed = r.subtype !== "biological";
     const g = el("g", { "data-rel": r.id, style: "cursor:pointer" });
     const midY = (originY + (child.y - R)) / 2;
@@ -820,6 +843,38 @@
     }
     g.appendChild(el("path", { d: `M ${originX} ${originY} L ${originX} ${midY} L ${child.x} ${midY} L ${child.x} ${child.y - R}`, fill: "none", stroke: "transparent", "stroke-width": 14 }));
     g.addEventListener("click", (e) => { e.stopPropagation(); select("rel", r.id); });
+    layer.appendChild(g);
+  }
+
+  function renderTwinPair(relA, relB, type, layer) {
+    const childA = personById(relA.childId), childB = personById(relB.childId);
+    if (!childA || !childB) return;
+    const origin = parentOrigin(relA.parentIds);
+    if (!origin) return;
+    const originX = origin.x, originY = origin.y;
+    const hubY = originY + 26;
+    const g = el("g");
+    g.appendChild(el("path", { d: `M ${originX} ${originY} L ${originX} ${hubY}`, fill: "none", stroke: "var(--ink-soft)", "stroke-width": 1.6 }));
+    function diag(child, rel) {
+      const isSel = selection && selection.id === rel.id;
+      const dashed = rel.subtype !== "biological";
+      const gg = el("g", { "data-rel": rel.id, style: "cursor:pointer" });
+      const strokeW = isSel ? 2.6 : 1.6;
+      const strokeC = isSel ? "var(--accent)" : "var(--ink-soft)";
+      const d = `M ${originX} ${hubY} L ${child.x} ${child.y - R}`;
+      gg.appendChild(el("path", { d, fill: "none", stroke: strokeC, "stroke-width": strokeW, "stroke-dasharray": dashed ? "6 4" : "" }));
+      gg.appendChild(el("path", { d, fill: "none", stroke: "transparent", "stroke-width": 14 }));
+      gg.addEventListener("click", (e) => { e.stopPropagation(); select("rel", rel.id); });
+      return gg;
+    }
+    g.appendChild(diag(childA, relA));
+    g.appendChild(diag(childB, relB));
+    if (type === "identical") {
+      const t = 0.45;
+      const pAx = originX + (childA.x - originX) * t, pAy = hubY + (childA.y - R - hubY) * t;
+      const pBx = originX + (childB.x - originX) * t, pBy = hubY + (childB.y - R - hubY) * t;
+      g.appendChild(el("line", { x1: pAx, y1: pAy, x2: pBx, y2: pBy, stroke: "var(--ink-soft)", "stroke-width": 1.6 }));
+    }
     layer.appendChild(g);
   }
 
@@ -888,11 +943,20 @@
     const stroke = selected ? "var(--accent)" : "var(--ink)";
     const fill = "var(--paper-raised)";
     const g = el("g");
-    function shapeAt(scale) {
+
+    if (p.gender === "preg" || p.gender === "loss") {
+      const r2 = R * 0.55;
+      const d = `M 0 ${-r2} L ${r2 * 0.95} ${r2 * 0.8} L ${-r2 * 0.95} ${r2 * 0.8} Z`;
+      g.appendChild(el("path", { d, fill: p.gender === "loss" ? stroke : "none", stroke, "stroke-width": strokeW }));
+      return g;
+    }
+
+    function shapeAt(scale, gender) {
       const r2 = R * scale;
-      if (p.gender === "f") return el("circle", { cx: 0, cy: 0, r: r2, fill, stroke, "stroke-width": strokeW });
-      if (p.gender === "d") return el("path", { d: `M ${-r2} ${r2} L ${-r2} 0 A ${r2} ${r2} 0 0 1 ${r2} 0 L ${r2} ${r2} Z`, fill, stroke, "stroke-width": strokeW });
-      if (p.gender === "u") return el("rect", { x: -r2*0.8, y: -r2*0.8, width: r2*1.6, height: r2*1.6, fill, stroke, "stroke-width": strokeW, transform: "rotate(45)" });
+      const gg = gender || p.gender;
+      if (gg === "f") return el("circle", { cx: 0, cy: 0, r: r2, fill, stroke, "stroke-width": strokeW });
+      if (gg === "d") return el("path", { d: `M ${-r2} ${r2} L ${-r2} 0 A ${r2} ${r2} 0 0 1 ${r2} 0 L ${r2} ${r2} Z`, fill, stroke, "stroke-width": strokeW });
+      if (gg === "u") return el("rect", { x: -r2*0.8, y: -r2*0.8, width: r2*1.6, height: r2*1.6, fill, stroke, "stroke-width": strokeW, transform: "rotate(45)" });
       return el("rect", { x: -r2, y: -r2, width: r2*2, height: r2*2, fill, stroke, "stroke-width": strokeW });
     }
     if (p.isIndex) {
@@ -903,6 +967,13 @@
       g.appendChild(outer);
     }
     g.appendChild(shapeAt(1));
+    if (p.birthGender && p.birthGender !== p.gender) {
+      // nested inner symbol = sex assigned at birth, outer shape = lived gender (McGoldrick 4th ed. 2020)
+      const inner = shapeAt(0.4, p.birthGender);
+      inner.setAttribute("fill", "var(--paper)");
+      inner.setAttribute("stroke-width", Math.max(1.1, strokeW - 0.9));
+      g.appendChild(inner);
+    }
     if (p.deceased) {
       const k = R * 0.95;
       g.appendChild(el("line", { x1: -k, y1: -k, x2: k, y2: k, stroke, "stroke-width": strokeW }));
@@ -915,12 +986,16 @@
     const selected = selection && selection.type === "person" && selection.id === p.id;
     const g = el("g", { "data-person": p.id, transform: `translate(${p.x} ${p.y})`, style: "cursor:grab" });
     g.appendChild(symbolShape(p, selected));
-    const label1 = p.name || "—";
-    const label2 = ageLabel(p);
-    g.appendChild(el("text", { x: 0, y: R + 17, "text-anchor": "middle", "font-size": 12, "font-weight": 600, fill: "var(--ink)", text: label1 }));
-    if (label2) g.appendChild(el("text", { x: 0, y: R + 31, "text-anchor": "middle", "font-size": 10, fill: "var(--ink-faint)", class: "mono", text: label2 }));
-    if (p.diagnoses && p.diagnoses.length) {
-      g.appendChild(el("circle", { cx: R*0.78, cy: -R*0.78, r: 4.5, fill: "var(--warn)" }));
+    if (p.gender === "preg" || p.gender === "loss") {
+      if (p.birthYear) g.appendChild(el("text", { x: 0, y: R * 0.55 + 15, "text-anchor": "middle", "font-size": 10, fill: "var(--ink-faint)", class: "mono", text: p.birthYear }));
+    } else {
+      const label1 = p.name || "—";
+      const label2 = ageLabel(p);
+      g.appendChild(el("text", { x: 0, y: R + 17, "text-anchor": "middle", "font-size": 12, "font-weight": 600, fill: "var(--ink)", text: label1 }));
+      if (label2) g.appendChild(el("text", { x: 0, y: R + 31, "text-anchor": "middle", "font-size": 10, fill: "var(--ink-faint)", class: "mono", text: label2 }));
+      if (p.diagnoses && p.diagnoses.length) {
+        g.appendChild(el("circle", { cx: R*0.78, cy: -R*0.78, r: 4.5, fill: "var(--warn)" }));
+      }
     }
     g.addEventListener("mousedown", (e) => onPersonMouseDown(e, p));
     g.addEventListener("touchstart", (e) => onPersonMouseDown(e, p), { passive: true });
@@ -951,7 +1026,8 @@
   $("#canvasWrap").addEventListener("click", (e) => {
     if (placeMode) {
       const pt = screenToWorld(e.clientX, e.clientY);
-      const p = { id: uid("p"), x: Math.round(pt.x), y: Math.round(pt.y), gender: placeMode, deceased: false, isIndex: state.people.length === 0, name: "", birthYear: "", deathYear: "", profession: "", diagnoses: [], origin: "", religion: "", notes: "" };
+      const isMarker = placeMode === "preg" || placeMode === "loss";
+      const p = { id: uid("p"), x: Math.round(pt.x), y: Math.round(pt.y), gender: placeMode, deceased: false, isIndex: !isMarker && state.people.length === 0, name: "", birthYear: "", deathYear: "", profession: "", diagnoses: [], origin: "", religion: "", notes: "", birthGender: "" };
       state.people.push(p);
       pushHistory(); render(); select("person", p.id); autosave();
       setPlaceMode(null);
@@ -981,8 +1057,59 @@
       setNoteMode(false);
       return;
     }
+    if (twinMode) {
+      handleTwinPick(p.id);
+      return;
+    }
     select("person", p.id);
   }
+
+  function handleTwinPick(personId) {
+    const already = (state.twinGroups || []).some(tg => tg.memberIds.includes(personId));
+    if (already) { toast("Diese Person ist bereits Teil eines Zwillingspaars."); return; }
+    const p = personById(personId);
+    if (p && (p.gender === "preg" || p.gender === "loss")) { toast("Schwangerschafts-/Fehlgeburt-Symbole können keine Zwillinge sein."); return; }
+    if (!twinPick.includes(personId)) twinPick.push(personId);
+    if (twinPick.length === 1) {
+      showHint("Klicke das zweite Zwillingskind an (gleiche Eltern).", () => setTwinMode(false));
+      return;
+    }
+    if (twinPick.length === 2) {
+      const relA = state.relationships.find(r => r.type === "parentchild" && r.childId === twinPick[0]);
+      const relB = state.relationships.find(r => r.type === "parentchild" && r.childId === twinPick[1]);
+      if (!relA || !relB || !sameParentSet(relA, relB)) {
+        toast("Beide müssen dieselben Eltern haben (Eltern–Kind-Verbindung vorher anlegen).");
+        setTwinMode(false);
+        return;
+      }
+      openModal("Zwillingsart", "Wie sind die beiden verbunden?", [
+        { label: "Zweieiig", sub: "zwei Linien treffen sich an einem Punkt", swatch: twinSwatch(false), onPick: () => { finishTwinPick("fraternal"); } },
+        { label: "Eineiig", sub: "zusätzlich Querbalken zwischen den Linien", swatch: twinSwatch(true), onPick: () => { finishTwinPick("identical"); } },
+      ]);
+    }
+  }
+  function twinSwatch(identical) {
+    const s = el("svg", { class: "sw", viewBox: "0 0 26 16", width: 26, height: 16 });
+    s.appendChild(el("path", { d: "M13 1 L4 15", fill: "none", stroke: "currentColor", "stroke-width": 1.6 }));
+    s.appendChild(el("path", { d: "M13 1 L22 15", fill: "none", stroke: "currentColor", "stroke-width": 1.6 }));
+    if (identical) s.appendChild(el("line", { x1: 9.5, y1: 7, x2: 16.5, y2: 7, stroke: "currentColor", "stroke-width": 1.6 }));
+    return s;
+  }
+  function finishTwinPick(type) {
+    closeModal();
+    state.twinGroups = state.twinGroups || [];
+    state.twinGroups.push({ id: uid("t"), type, memberIds: twinPick.slice() });
+    pushHistory(); render(); autosave();
+    toast("Zwillinge markiert.");
+    setTwinMode(false);
+  }
+  function setTwinMode(v) {
+    twinMode = v; twinPick = [];
+    $("#toolTwins").classList.toggle("active", v);
+    if (v) showHint("Klicke das erste Zwillingskind an.", () => setTwinMode(false));
+    else hideHint();
+  }
+  $("#toolTwins").addEventListener("click", () => setTwinMode(!twinMode));
 
   function highlightHouseholdPick() {
     householdPick.forEach(id => {
@@ -1069,9 +1196,10 @@
   }
   $all(".pal-btn[data-place]").forEach(b => b.addEventListener("click", () => setPlaceMode(placeMode === b.dataset.place ? null : b.dataset.place)));
 
-  function showHint(text, onCancel) {
+  function showHint(text, onCancel, btnLabel) {
     $("#hintText").textContent = text;
     $("#hintBar").hidden = false;
+    $("#hintCancel").textContent = btnLabel || "Abbrechen (Esc)";
     $("#hintCancel").onclick = onCancel;
   }
   function hideHint() { $("#hintBar").hidden = true; }
@@ -1119,24 +1247,22 @@
     }
   }
   function setConnectMode(v) { connectMode = v; if (!v) hideHint(); }
+  function finishParentPicking() {
+    connectMode.choosingChild = true;
+    showHint("Jetzt das Kind anklicken.", () => setConnectMode(null));
+  }
 
   function handleConnectPick(personId) {
     if (connectMode.kind === "parentchild") {
-      if (!connectMode.child && connectMode.parents.length < (connectMode.wantSecondParent ? 2 : 1) && !connectMode.choosingChild) {
+      if (!connectMode.choosingChild) {
         if (connectMode.parents.includes(personId)) return;
         connectMode.parents.push(personId);
         if (connectMode.parents.length === 1) {
-          showHint("Optional: zweiten Elternteil klicken, oder direkt das Kind klicken.", () => setConnectMode(null));
-          connectMode.choosingChild = "maybe";
+          showHint("Optional: zweiten Elternteil anklicken.", finishParentPicking, "Nur 1 Elternteil, weiter →");
         } else {
-          connectMode.choosingChild = true;
-          showHint("Jetzt das Kind klicken.", () => setConnectMode(null));
+          finishParentPicking();
         }
         return;
-      }
-      if (connectMode.choosingChild === "maybe") {
-        // second click after first parent: could be 2nd parent or child — ambiguous, treat as child if not adjacent partner
-        connectMode.choosingChild = true;
       }
       if (connectMode.parents.includes(personId)) return;
       const rel = { id: uid("r"), type: "parentchild", subtype: connectMode.subtype, parentIds: connectMode.parents.slice(), childId: personId };
@@ -1163,7 +1289,7 @@
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape") {
       if (wiz) { closeWizard(); return; }
-      setPlaceMode(null); setConnectMode(null); setHouseholdMode(false); setNoteMode(false); closeModal();
+      setPlaceMode(null); setConnectMode(null); setHouseholdMode(false); setNoteMode(false); setTwinMode(false); closeModal();
     }
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z" && !e.shiftKey) { e.preventDefault(); undo(); }
     if ((e.ctrlKey || e.metaKey) && (e.key.toLowerCase() === "y" || (e.key.toLowerCase() === "z" && e.shiftKey))) { e.preventDefault(); redo(); }
@@ -1253,6 +1379,7 @@
       state.households = state.households.filter(h => h.memberIds.length >= 2);
       state.notes = state.notes.filter(n => !(n.targetType === "person" && n.targetId === selection.id));
       state.people = state.people.filter(p => p.id !== selection.id);
+      state.twinGroups = (state.twinGroups || []).filter(tg => !tg.memberIds.includes(selection.id));
     } else if (selection.type === "rel") {
       state.notes = state.notes.filter(n => !(n.targetType === "relationship" && n.targetId === selection.id));
       state.relationships = state.relationships.filter(r => r.id !== selection.id);
@@ -1323,17 +1450,43 @@
     if (selection.type === "person") {
       const p = personById(selection.id); if (!p) { panel.hidden = true; return; }
       h2.textContent = GENDERS[p.gender] + (p.isIndex ? " · Indexperson" : "");
+
+      if (p.gender === "preg" || p.gender === "loss") {
+        body.appendChild(field("Jahr", numInput(p.birthYear, v => p.birthYear = v, "z. B. 2020")));
+        body.appendChild(field("Notizen", textArea(p.notes, v => p.notes = v)));
+        renderNotesFor(body, "person", p.id);
+        panel.appendChild(head); panel.appendChild(body); panel.appendChild(footer);
+        return;
+      }
+
       body.appendChild(field("Name / Initialen", textInput(p.name, v => p.name = v, "z. B. C.S.")));
       const row = document.createElement("div"); row.className = "field-row";
       row.appendChild(field("Geburtsjahr", numInput(p.birthYear, v => p.birthYear = v, "1985")));
       row.appendChild(field("Todesjahr", numInput(p.deathYear, v => p.deathYear = v, "—")));
       body.appendChild(row);
       body.appendChild(field("Geschlecht", selectInput(p.gender, [{id:"m",label:"Männlich"},{id:"f",label:"Weiblich"},{id:"d",label:"Divers"},{id:"u",label:"Unbekannt"}], v => p.gender = v)));
+      body.appendChild(field("Geburtsgeschlecht (falls abweichend)", selectInput(p.birthGender || "", [{id:"",label:"— nicht angeben —"},{id:"m",label:"Männlich"},{id:"f",label:"Weiblich"},{id:"d",label:"Divers"},{id:"u",label:"Unbekannt"}], v => p.birthGender = v)));
       body.appendChild(checkField("Verstorben", p.deceased, v => p.deceased = v));
       body.appendChild(checkField("Indexperson (Klient:in)", p.isIndex, v => { if (v) state.people.forEach(x => x.isIndex = false); p.isIndex = v; }));
       body.appendChild(field("Beruf", textInput(p.profession, v => p.profession = v)));
       body.appendChild(field("Herkunft / Migrationshintergrund", textInput(p.origin, v => p.origin = v)));
       body.appendChild(field("Religion", textInput(p.religion, v => p.religion = v)));
+
+      const twinGroup = (state.twinGroups || []).find(tg => tg.memberIds.includes(p.id));
+      if (twinGroup) {
+        const otherId = twinGroup.memberIds.find(id => id !== p.id);
+        const other = personById(otherId);
+        const twinWrap = document.createElement("div"); twinWrap.className = "field";
+        twinWrap.appendChild(Object.assign(document.createElement("label"), { textContent: "Zwillingspaar" }));
+        const twinRow = document.createElement("div"); twinRow.className = "note-chip";
+        const twinTypeLabel = twinGroup.type === "identical" ? "Eineiig" : "Zweieiig";
+        twinRow.appendChild(Object.assign(document.createElement("span"), { textContent: `${twinTypeLabel} mit ${other ? (other.name || "—") : "?"}` }));
+        const rmTwin = document.createElement("button"); rmTwin.textContent = "✕";
+        rmTwin.addEventListener("click", () => { state.twinGroups = state.twinGroups.filter(tg => tg.id !== twinGroup.id); pushHistory(); render(); renderProps(); autosave(); });
+        twinRow.appendChild(rmTwin);
+        twinWrap.appendChild(twinRow);
+        body.appendChild(twinWrap);
+      }
 
       const diagWrap = document.createElement("div"); diagWrap.className = "field";
       diagWrap.appendChild(Object.assign(document.createElement("label"), { textContent: "Diagnosen / Erkrankungen" }));
@@ -1439,10 +1592,29 @@
       svgEl.appendChild(s);
       return svgEl;
     }
+    function shapeSwatchTrans() {
+      const svgEl = el("svg", { viewBox: "0 0 28 28", width: 22, height: 22 });
+      const s = symbolShape.call(null, { gender: "m", birthGender: "f" }, false);
+      Array.from(s.querySelectorAll("*")).forEach(node => {
+        if (node.getAttribute("stroke")) node.setAttribute("stroke", "var(--ink-soft)");
+        if (node.getAttribute("fill") === "var(--paper-raised)") node.setAttribute("fill", "none");
+        if (node.getAttribute("fill") === "var(--paper)") node.setAttribute("fill", "var(--paper-sunken)");
+      });
+      s.setAttribute("transform", "translate(14 14) scale(0.42)");
+      svgEl.appendChild(s);
+      return svgEl;
+    }
     section("Personen", [
       row(shapeSwatch("m"), "Männlich"), row(shapeSwatch("f"), "Weiblich"), row(shapeSwatch("d"), "Divers / nicht-binär"), row(shapeSwatch("u"), "Geschlecht unbekannt"),
       row((() => { const s = el("svg", { viewBox: "0 0 28 28", width: 22, height: 22 }); s.appendChild(el("line", { x1: 6, y1: 6, x2: 22, y2: 22, stroke: "var(--ink-soft)", "stroke-width": 2 })); s.appendChild(el("line", { x1: 6, y1: 22, x2: 22, y2: 6, stroke: "var(--ink-soft)", "stroke-width": 2 })); return s; })(), "Verstorben (diagonales Kreuz)"),
       row((() => { const s = el("svg", { viewBox: "0 0 28 28", width: 22, height: 22 }); s.appendChild(el("rect", { x: 5, y: 5, width: 18, height: 18, fill: "none", stroke: "var(--accent)", "stroke-width": 1.6 })); return s; })(), "Doppelte Umrandung = Indexperson"),
+      row(shapeSwatchTrans(), "Trans: äußere Form = gelebtes Geschlecht, innere Form = Geburtsgeschlecht"),
+      row(shapeSwatch("preg"), "Schwangerschaft"),
+      row(shapeSwatch("loss"), "Fehlgeburt / Abtreibung"),
+    ]);
+    section("Zwillinge", [
+      row(twinSwatch(false), "Zweieiig — zwei Linien treffen sich an einem Punkt"),
+      row(twinSwatch(true), "Eineiig — zusätzlich Querbalken zwischen den Linien"),
     ]);
     section("Partnerschaft", PARTNER_TYPES.map(t => row(connectSwatchLegend("partner", t.id), t.label + (t.hint ? " — " + t.hint : ""))));
     section("Eltern–Kind", PARENTCHILD_TYPES.map(t => row(connectSwatchLegend("parentchild", t.id), t.label)));
