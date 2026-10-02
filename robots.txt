@@ -1,0 +1,50 @@
+# DokuPfad (dokupfad.de) — robots.txt
+# Alle Inhalte sind oeffentlich und duerfen von Suchmaschinen und
+# KI-Recherche-Agenten gelesen und zitiert werden.
+
+# Klassische Suchmaschinen
+User-agent: Googlebot
+Allow: /
+
+User-agent: Bingbot
+Allow: /
+
+# KI-/Agenten-Crawler (GEO/AEO)
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: anthropic-ai
+Allow: /
+
+User-agent: Claude-SearchBot
+Allow: /
+
+User-agent: Claude-User
+Allow: /
+
+User-agent: GPTBot
+Allow: /
+
+User-agent: ChatGPT-User
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: Perplexity-User
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
+
+User-agent: CCBot
+Allow: /
+
+User-agent: Applebot-Extended
+Allow: /
+
+# Alle uebrigen Bots
+User-agent: *
+Allow: /
+
+Sitemap: https://dokupfad.de/sitemap.xml
