@@ -1402,7 +1402,7 @@
   function textInput(value, onInput, placeholder) {
     const i = document.createElement("input"); i.type = "text"; i.value = value || ""; if (placeholder) i.placeholder = placeholder;
     i.addEventListener("input", () => onInput(i.value));
-    i.addEventListener("change", () => { pushHistory(); autosave(); });
+    i.addEventListener("change", () => { pushHistory(); render(); autosave(); });
     return i;
   }
   function numInput(value, onInput, placeholder) {
@@ -1414,7 +1414,7 @@
   function textArea(value, onInput) {
     const i = document.createElement("textarea"); i.value = value || "";
     i.addEventListener("input", () => onInput(i.value));
-    i.addEventListener("change", () => { pushHistory(); autosave(); });
+    i.addEventListener("change", () => { pushHistory(); render(); autosave(); });
     return i;
   }
   function selectInput(value, options, onChange) {
@@ -2254,12 +2254,21 @@
       if (!ids.length) return;
       const parentId = wiz.roles.parentIds[idx];
       const parentX = parentId ? wsById(parentId).x : 500;
+      const otherParentId = wiz.roles.parentIds[1 - idx];
+      // Richtung, die vom jeweils anderen Elternteil WEG zeigt - verhindert, dass die
+      // beiden Grosseltern-Paare bei eng stehenden Eltern ueberlappen (vorheriger Bug:
+      // beide Paare wurden symmetrisch um ihren Elternteil zentriert und ueberschnitten
+      // sich dadurch exakt in der Mitte zwischen den Eltern).
+      const dir = otherParentId ? (parentX < wsById(otherParentId).x ? -1 : 1) : (idx === 0 ? -1 : 1);
       if (ids.length === 2) {
         const [ga, gb] = ids;
         const pa = wsById(ga), pb = wsById(gb);
+        const posInner = parentX; // direkt ueber dem Elternteil, nie Richtung Bildmitte
+        const posOuter = parentX + dir * SPACING; // weiter nach aussen versetzt
+        const xLeft = Math.min(posInner, posOuter), xRight = Math.max(posInner, posOuter);
         const leftIsA = !(pa.gender === "f" && pb.gender === "m");
-        pa.x = parentX + (leftIsA ? -1 : 1) * SPACING / 2; pa.y = Y.gp;
-        pb.x = parentX + (leftIsA ? 1 : -1) * SPACING / 2; pb.y = Y.gp;
+        if (leftIsA) { pa.x = xLeft; pb.x = xRight; } else { pa.x = xRight; pb.x = xLeft; }
+        pa.y = Y.gp; pb.y = Y.gp;
       } else {
         const ga = wsById(ids[0]); ga.x = parentX; ga.y = Y.gp;
       }
